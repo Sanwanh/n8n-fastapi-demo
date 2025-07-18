@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  market-analysis:
+    build: .
+    container_name: market-analysis-system
+    ports:
+      - "8089:8089"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Asia/Taipei
+    volumes:
+      - ./config.py:/app/config.py
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - market-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8089/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  ngrok-market:
+    image: ngrok/ngrok:latest
+    container_name: ngrok-market-analysis
+    environment:
+      - NGROK_AUTHTOKEN=2zzNP5hnqCVT1EkLieXmLyNEUnX_7RqY7RwqEPheVpbbeRRX6
+    command: http market-analysis:8089 --log=stdout --region=ap
+    ports:
+      - "4041:4040"  # 使用不同的端口避免衝突
+    depends_on:
+      market-analysis:
+        condition: service_healthy
+    networks:
+      - market-network
+    restart: unless-stopped
+
+networks:
+  market-network:
+    driver: bridge
+
+volumes:
+  logs:
+    driver: local
