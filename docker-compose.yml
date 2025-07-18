@@ -1,20 +1,53 @@
 version: '3.8'
 
 services:
+  # 市場分析主服務
   market-analysis:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - PYTHON_VERSION=3.11
+        - BUILD_DATE=${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}
     container_name: market-analysis-system
+    restart: unless-stopped
+
+    # 端口映射
     ports:
-      - "8089:8089"
+      - "${SERVER_PORT:-8089}:8089"
+
+    # 環境變數
     environment:
       - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
       - TZ=Asia/Taipei
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - DEBUG=${DEBUG:-False}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8089
+
+      # Webhook 配置
+      - WEBHOOK_URL=${WEBHOOK_URL:-https://beloved-swine-sensibly.ngrok-free.app/webhook-test/ef5ac185-f41a-4a2d-9a78-33d329184c2}
+      - WEBHOOK_TIMEOUT=${WEBHOOK_TIMEOUT:-30}
+
+      # 安全配置
+      - API_KEY=${API_KEY:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+
+      # 功能開關
+      - ENABLE_METRICS=${ENABLE_METRICS:-true}
+      - ENABLE_AUTO_BACKUP=${ENABLE_AUTO_BACKUP:-false}
+
+    # 資料卷掛載
     volumes:
-      - ./config.py:/app/config.py
-      - ./logs:/app/logs
-    restart: unless-stopped
-    networks:
-      - market-network
+      - ./config.py:/app/config.py:ro                    # 配置檔案（唯讀）
+      - ./logs:/app/logs                                 # 日誌目錄
+      - ./data:/app/data                                 # 資料目錄
+      - ./backups:/app/backups                           # 備份目錄
+      - market_analysis_cache:/app/cache                 # 快取目錄
+
+    # 健康檢查
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8089/health"]
       interval: 30s
@@ -22,25 +55,279 @@ services:
       retries: 3
       start_period: 40s
 
+    # 資源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+    # 網路配置
+    networks:
+      - market-network
+
+    # 依賴服務
+    depends_on:
+      - market-db
+
+    # 標籤
+    labels:
+      - "com.example.service=market-analysis"
+      - "com.example.version=1.2.0"
+      - "com.example.description=Market Analysis Report System"
+
+  # ngrok 隧道服務
   ngrok-market:
-    image: ngrok/ngrok:latest
+    image: ngrok/ngrok:3-alpine
     container_name: ngrok-market-analysis
+    restart: unless-stopped
+
+    # 環境變數
     environment:
-      - NGROK_AUTHTOKEN=2zzNP5hnqCVT1EkLieXmLyNEUnX_7RqY7RwqEPheVpbbeRRX6
-    command: http market-analysis:8089 --log=stdout --region=ap
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN:-2zzNP5hnqCVT1EkLieXmLyNEUnX_7RqY7RwqEPheVpbbeRRX6}
+      - NGROK_CONFIG=/etc/ngrok.yml
+
+    # 端口映射
     ports:
-      - "4041:4040"  # 使用不同的端口避免衝突
+      - "${NGROK_WEB_PORT:-4041}:4040"                   # ngrok 管理介面
+
+    # 配置檔案
+    volumes:
+      - ./docker/ngrok.yml:/etc/ngrok.yml:ro             # ngrok 配置檔案
+      - ngrok_data:/home/ngrok/.ngrok2                   # ngrok 資料目錄
+
+    # 啟動命令
+    command: ["http", "market-analysis:8089", "--log=stdout", "--region=ap"]
+
+    # 健康檢查
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4040/api/tunnels"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+    # 網路配置
+    networks:
+      - market-network
+
+    # 依賴服務
     depends_on:
       market-analysis:
         condition: service_healthy
-    networks:
-      - market-network
+
+    # 標籤
+    labels:
+      - "com.example.service=ngrok-tunnel"
+      - "com.example.version=3.0"
+      - "com.example.description=ngrok tunnel for market analysis"
+
+  # 資料庫服務（可選，SQLite 備用方案）
+  market-db:
+    image: postgres:15-alpine
+    container_name: market-analysis-db
     restart: unless-stopped
 
+    # 環境變數
+    environment:
+      - POSTGRES_DB=${DB_NAME:-market_analysis}
+      - POSTGRES_USER=${DB_USER:-market_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-secure_password_123}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=C
+
+    # 端口映射（僅內部網路）
+    expose:
+      - "5432"
+
+    # 資料卷
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+
+    # 健康檢查
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-market_user} -d ${DB_NAME:-market_analysis}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    # 網路配置
+    networks:
+      - market-network
+
+    # 標籤
+    labels:
+      - "com.example.service=database"
+      - "com.example.version=15"
+      - "com.example.description=PostgreSQL database for market analysis"
+
+  # Redis 快取服務（可選）
+  market-cache:
+    image: redis:7-alpine
+    container_name: market-analysis-cache
+    restart: unless-stopped
+
+    # 啟動命令
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-cache_password_456}
+
+    # 端口映射（僅內部網路）
+    expose:
+      - "6379"
+
+    # 資料卷
+    volumes:
+      - redis_data:/data
+      - ./docker/redis.conf:/usr/local/etc/redis/redis.conf:ro
+
+    # 健康檢查
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+    # 資源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 32M
+
+    # 網路配置
+    networks:
+      - market-network
+
+    # 標籤
+    labels:
+      - "com.example.service=cache"
+      - "com.example.version=7"
+      - "com.example.description=Redis cache for market analysis"
+
+  # 日誌收集服務（可選）
+  market-logs:
+    image: fluent/fluent-bit:2.2
+    container_name: market-analysis-logs
+    restart: unless-stopped
+
+    # 配置檔案
+    volumes:
+      - ./docker/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./logs:/var/log/market-analysis:ro
+      - fluent_bit_data:/var/lib/fluent-bit
+
+    # 端口映射
+    ports:
+      - "${FLUENT_BIT_PORT:-24224}:24224"
+
+    # 網路配置
+    networks:
+      - market-network
+
+    # 依賴服務
+    depends_on:
+      - market-analysis
+
+    # 標籤
+    labels:
+      - "com.example.service=logging"
+      - "com.example.version=2.2"
+      - "com.example.description=Log collection for market analysis"
+
+  # 監控服務（可選）
+  market-monitor:
+    image: prom/prometheus:v2.45.0
+    container_name: market-analysis-monitor
+    restart: unless-stopped
+
+    # 配置檔案
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+    # 端口映射
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+
+    # 啟動命令
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+
+    # 網路配置
+    networks:
+      - market-network
+
+    # 依賴服務
+    depends_on:
+      - market-analysis
+
+    # 標籤
+    labels:
+      - "com.example.service=monitoring"
+      - "com.example.version=2.45.0"
+      - "com.example.description=Prometheus monitoring for market analysis"
+
+# 網路定義
 networks:
   market-network:
     driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: market-br0
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.0.0/24
+          gateway: 172.25.0.1
+    labels:
+      - "com.example.network=market-analysis"
 
+# 資料卷定義
 volumes:
-  logs:
+  # 應用資料
+  market_analysis_cache:
     driver: local
+    name: market_analysis_cache
+
+  # 資料庫資料
+  postgres_data:
+    driver: local
+    name: market_postgres_data
+
+  # 快取資料
+  redis_data:
+    driver: local
+    name: market_redis_data
+
+  # ngrok 資料
+  ngrok_data:
+    driver: local
+    name: market_ngrok_data
+
+  # 日誌資料
+  fluent_bit_data:
+    driver: local
+    name: market_fluent_bit_data
+
+  # 監控資料
+  prometheus_data:
+    driver: local
+    name: market_prometheus_data
+
+# 設定檔案範例 (需要在 docker/ 目錄下建立)
+# 1. docker/ngrok.yml - ngrok 配置
+# 2. docker/redis.conf - Redis 配置
+# 3. docker/fluent-bit.conf - Fluent Bit 配置
+# 4. docker/prometheus.yml - Prometheus 配置
+# 5. docker/init-db.sql - 資料庫初始化腳本
