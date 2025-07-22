@@ -1,7 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-import
-as yf
+import yfinance as yf
 from datetime import datetime, timedelta
 import os
 

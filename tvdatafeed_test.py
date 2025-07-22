@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from datetime import datetime, timedelta
 import numpy as np
+from matplotlib.widgets import Cursor
+import mplcursors
 
 
 # 配置設定
@@ -162,13 +164,14 @@ def create_visualization(data, stats):
     ax1.plot(dates, ma_50, linewidth=1, alpha=0.7, color='red', label='MA50')
 
     # 設定主圖標題 - 包含最新更新時間
-    latest_time = stats["latest_date"].strftime('%Y-%m-%d %H:%M')
-    ax1.set_title(f'Gold Futures (GC=F) - 1 Year Chart | Current: ${stats["current_price"]:.2f} USD/oz ({latest_time})',
+    latest_time = stats["latest_date"]
+    ax1.set_title(f'Gold Futures (GC=F) - 1 Year Chart | Current: ${stats["current_price"]:.2f} USD/oz ({latest_time.strftime("%Y-%m-%d %H:%M")})',
                   fontsize=14, fontweight='bold', pad=20)
     ax1.set_ylabel('Price (USD/oz)', fontsize=12)
     ax1.grid(True, alpha=Config.GRID_ALPHA)
     # 調整圖例位置，避免與統計框重疊
     ax1.legend(loc='upper right', framealpha=0.9)
+
 
     # 添加統計資訊文字框 - 修正格式問題
     info_text = f'''Statistics (1 Year):
