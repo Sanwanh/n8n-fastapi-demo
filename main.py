@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-市場分析報告系統 - 主程式 (完整版本)
-Market Analysis Report System - Main Application (Complete Version)
+市場分析報告系統 - 主程式 (修正版本)
+Market Analysis Report System - Main Application (Fixed Version)
 
-新增郵件發送頁面和功能
+修正導入錯誤問題
 """
 
 import os
@@ -482,117 +482,6 @@ async def send_email(email_data: EmailRequest):
         raise HTTPException(status_code=500, detail=f"發送失敗: {str(e)}")
 
 
-@app.post("/api/send-mail-to-n8n")
-async def send_mail_to_n8n(mail_data: MailSenderRequest):
-    """新的郵件發送 API - 將市場資料和郵件資訊發送到 N8N webhook"""
-    try:
-        logger.info(f"📧 開始新版郵件發送程序...")
-        logger.info(f"   收件人: {mail_data.recipient_email}")
-        logger.info(f"   主題: {mail_data.subject}")
-        logger.info(f"   優先級: {mail_data.priority}")
-
-        # 檢查是否有市場資料
-        if not stored_data:
-            logger.warning("❌ 沒有市場資料")
-            raise HTTPException(
-                status_code=400,
-                detail="沒有可用的市場分析資料，請先從 N8N 傳送資料"
-            )
-
-        # 構建要發送到 N8N 的完整數據結構
-        n8n_payload = {
-            # 原始市場數據
-            "average_sentiment_score": stored_data.get("average_sentiment_score"),
-            "message_content": stored_data.get("message_content"),
-            "market_date": stored_data.get("market_date"),
-            "confidence_level": stored_data.get("confidence_level"),
-            "trend_direction": stored_data.get("trend_direction"),
-            "risk_assessment": stored_data.get("risk_assessment"),
-            "received_time": stored_data.get("received_time"),
-
-            # 郵件配置資訊
-            "mail_config": {
-                "recipient_email": str(mail_data.recipient_email),
-                "sender_name": mail_data.sender_name,
-                "subject": mail_data.subject,
-                "priority": mail_data.priority,
-                "mail_type": mail_data.mail_type,
-                "custom_message": mail_data.custom_message,
-                "include_charts": mail_data.include_charts,
-                "include_recommendations": mail_data.include_recommendations,
-                "include_risk_warning": mail_data.include_risk_warning
-            },
-
-            # 系統資訊
-            "system_info": {
-                "send_timestamp": datetime.now().isoformat(),
-                "system_version": CONFIG['SYSTEM_INFO']['version'],
-                "source": "mail-sender-page"
-            },
-
-            # 情感分析資訊
-            "sentiment_analysis": {
-                "score": stored_data.get("average_sentiment_score"),
-                "text": get_sentiment_text(stored_data.get("average_sentiment_score", 0)),
-                "emoji": get_market_emoji(stored_data.get("average_sentiment_score", 0))
-            }
-        }
-
-        logger.info(f"📤 發送資料到 N8N: {CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url']}")
-        logger.info(f"📊 資料大小: {len(json.dumps(n8n_payload))} bytes")
-
-        # 發送到 N8N webhook
-        response = requests.post(
-            CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url'],
-            json=n8n_payload,
-            headers={
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'User-Agent': f"{CONFIG['SYSTEM_INFO']['name']}/{CONFIG['SYSTEM_INFO']['version']}"
-            },
-            timeout=CONFIG['WEBHOOK_CONFIG']['timeout']
-        )
-
-        logger.info(f"📨 N8N 回應狀態: {response.status_code}")
-
-        if response.status_code == 200:
-            # 更新統計
-            update_send_statistics()
-
-            logger.info("✅ 郵件資料成功發送到 N8N!")
-            return {
-                "status": "success",
-                "message": f"郵件資料已成功發送到 N8N，將發送到 {mail_data.recipient_email}",
-                "sent_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "target_url": CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url'],
-                "recipient": str(mail_data.recipient_email),
-                "subject": mail_data.subject,
-                "priority": mail_data.priority,
-                "stats": system_stats,
-                "payload_size": len(json.dumps(n8n_payload))
-            }
-        else:
-            error_text = response.text if response.text else "無回應內容"
-            logger.error(f"❌ N8N 回應錯誤: {response.status_code} - {error_text}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"N8N webhook 回應錯誤: {response.status_code}"
-            )
-
-    except requests.exceptions.Timeout:
-        logger.error("❌ N8N webhook 請求超時")
-        raise HTTPException(status_code=500, detail="N8N webhook 請求超時，請檢查網路連接")
-    except requests.exceptions.ConnectionError:
-        logger.error("❌ 無法連接到 N8N webhook")
-        raise HTTPException(
-            status_code=500,
-            detail=f"無法連接到 N8N webhook: {CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url']}"
-        )
-    except Exception as e:
-        logger.error(f"❌ 發送郵件資料到 N8N 失敗: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"發送失敗: {str(e)}")
-
-
 @app.get("/health")
 async def health_check():
     """系統健康檢查"""
@@ -604,151 +493,12 @@ async def health_check():
         "system": CONFIG['SYSTEM_INFO']['name'],
         "version": CONFIG['SYSTEM_INFO']['version'],
         "webhook_url": CONFIG['WEBHOOK_CONFIG']['send_url'],
-        "n8n_webhook_url": CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url'],
         "has_data": len(stored_data) > 0,
         "stats": system_stats,
         "uptime": str(uptime).split('.')[0],
         "environment": os.getenv('ENVIRONMENT', 'development'),
         "features": CONFIG['FEATURE_FLAGS']
     }
-
-
-@app.get("/api/stats")
-async def get_system_stats():
-    """取得系統統計資料"""
-    try:
-        return {
-            "status": "success",
-            "stats": system_stats,
-            "has_current_data": len(stored_data) > 0,
-            "last_data_time": stored_data.get("received_time") if stored_data else None,
-            "system_info": CONFIG['SYSTEM_INFO']
-        }
-    except Exception as e:
-        logger.error(f"❌ 取得統計資料失敗: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"取得統計資料失敗: {str(e)}")
-
-
-@app.get("/api/test-connection")
-async def test_webhook_connection():
-    """測試 webhook 連接"""
-    try:
-        logger.info(f"🔍 測試連接到: {CONFIG['WEBHOOK_CONFIG']['send_url']}")
-
-        # 發送測試請求
-        test_response = requests.get(
-            CONFIG['WEBHOOK_CONFIG']['send_url'],
-            timeout=10,
-            headers={"User-Agent": f"{CONFIG['SYSTEM_INFO']['name']}/test"}
-        )
-
-        logger.info(f"✅ 測試連接成功，狀態碼: {test_response.status_code}")
-
-        return {
-            "status": "success",
-            "target_url": CONFIG['WEBHOOK_CONFIG']['send_url'],
-            "response_code": test_response.status_code,
-            "response_time": "< 10s",
-            "message": "Webhook 連接測試成功",
-            "timestamp": datetime.now().isoformat()
-        }
-    except requests.exceptions.Timeout:
-        logger.warning("⚠️  測試連接超時")
-        return {
-            "status": "timeout",
-            "target_url": CONFIG['WEBHOOK_CONFIG']['send_url'],
-            "error": "連接超時",
-            "message": "Webhook 連接測試超時，但這不一定表示服務不可用"
-        }
-    except requests.exceptions.ConnectionError as e:
-        logger.error(f"❌ 測試連接失敗: {str(e)}")
-        return {
-            "status": "error",
-            "target_url": CONFIG['WEBHOOK_CONFIG']['send_url'],
-            "error": str(e),
-            "message": "無法連接到 webhook，請檢查 URL 和網路連接"
-        }
-    except Exception as e:
-        logger.error(f"❌ 測試連接發生未知錯誤: {str(e)}")
-        return {
-            "status": "error",
-            "target_url": CONFIG['WEBHOOK_CONFIG']['send_url'],
-            "error": str(e),
-            "message": "測試連接失敗"
-        }
-
-
-@app.get("/api/test-n8n-connection")
-async def test_n8n_connection():
-    """測試 N8N webhook 連接"""
-    try:
-        logger.info(f"🔍 測試 N8N 連接到: {CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url']}")
-
-        # 發送測試資料
-        test_data = {
-            "test": True,
-            "message": "系統連接測試",
-            "timestamp": datetime.now().isoformat(),
-            "source": "connection-test"
-        }
-
-        test_response = requests.post(
-            CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url'],
-            json=test_data,
-            timeout=10,
-            headers={
-                'Content-Type': 'application/json',
-                'User-Agent': f"{CONFIG['SYSTEM_INFO']['name']}/test"
-            }
-        )
-
-        logger.info(f"✅ N8N 測試連接成功，狀態碼: {test_response.status_code}")
-
-        return {
-            "status": "success",
-            "target_url": CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url'],
-            "response_code": test_response.status_code,
-            "response_time": "< 10s",
-            "message": "N8N Webhook 連接測試成功",
-            "timestamp": datetime.now().isoformat()
-        }
-    except requests.exceptions.Timeout:
-        logger.warning("⚠️  N8N 測試連接超時")
-        return {
-            "status": "timeout",
-            "target_url": CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url'],
-            "error": "連接超時",
-            "message": "N8N Webhook 連接測試超時"
-        }
-    except Exception as e:
-        logger.error(f"❌ N8N 測試連接失敗: {str(e)}")
-        return {
-            "status": "error",
-            "target_url": CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url'],
-            "error": str(e),
-            "message": "N8N Webhook 連接測試失敗"
-        }
-
-
-@app.get("/api/config")
-async def get_frontend_config():
-    """提供前端配置資料"""
-    try:
-        return {
-            "status": "success",
-            "config": {
-                "system_info": CONFIG['SYSTEM_INFO'],
-                "ui_config": CONFIG['UI_CONFIG'],
-                "feature_flags": CONFIG['FEATURE_FLAGS'],
-                "sentiment_config": {
-                    "labels": CONFIG['SENTIMENT_CONFIG']['labels'],
-                    "emojis": CONFIG['SENTIMENT_CONFIG']['emojis']
-                }
-            }
-        }
-    except Exception as e:
-        logger.error(f"❌ 取得前端配置失敗: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"取得配置失敗: {str(e)}")
 
 
 # 輔助函數
@@ -944,182 +694,19 @@ def get_default_html():
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{CONFIG['SYSTEM_INFO']['name']}</title>
     <style>
-        :root {{
-            --primary: #2563eb;
-            --success: #10b981;
-            --error: #ef4444;
-            --bg: #0f172a;
-            --card: rgba(30, 41, 59, 0.8);
-            --text: #f8fafc;
-            --text-muted: #64748b;
-        }}
-
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-
-        body {{
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, var(--bg) 0%, #1e293b 100%);
-            color: var(--text);
-            min-height: 100vh;
-            padding: 2rem;
-        }}
-
-        .container {{
-            max-width: 800px;
-            margin: 0 auto;
-        }}
-
-        .header {{
-            text-align: center;
-            margin-bottom: 2rem;
-            padding: 2rem;
-            background: var(--card);
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-        }}
-
-        .card {{
-            background: var(--card);
-            border-radius: 15px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-        }}
-
-        .btn {{
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 1rem 2rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin: 0.5rem;
-        }}
-
-        .btn:hover {{ 
-            background: #1d4ed8; 
-            transform: translateY(-2px);
-        }}
-
-        .btn.success {{
-            background: var(--success);
-        }}
-
-        .navigation {{
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            margin-bottom: 2rem;
-        }}
+        body {{ font-family: Arial, sans-serif; margin: 2rem; background: #f5f5f5; }}
+        .container {{ max-width: 800px; margin: 0 auto; background: white; padding: 2rem; border-radius: 10px; }}
+        .btn {{ background: #007bff; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 5px; }}
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🚀 {CONFIG['SYSTEM_INFO']['name']}</h1>
-            <p>{CONFIG['SYSTEM_INFO']['description']}</p>
-            <p>版本: {CONFIG['SYSTEM_INFO']['version']}</p>
-        </div>
-
-        <div class="navigation">
-            <a href="/" class="btn">
-                🏠 首頁
-            </a>
-            <a href="/mail" class="btn success">
-                📧 郵件發送
-            </a>
-            <a href="/docs" class="btn">
-                📚 API 文檔
-            </a>
-        </div>
-
-        <div class="card">
-            <h2>📊 系統狀態</h2>
-            <div id="status" style="padding: 1rem; border-radius: 8px; margin: 1rem 0; background: rgba(245, 158, 11, 0.2);">
-                🔄 正在檢查系統狀態...
-            </div>
-            <div id="data-info"></div>
-        </div>
-
-        <div class="card">
-            <h2>🛠️ 系統功能</h2>
-            <ul style="list-style: none; padding: 0;">
-                <li style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                    📡 接收 N8N 市場分析數據
-                </li>
-                <li style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                    📈 即時情感分析顯示
-                </li>
-                <li style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                    📧 智能郵件發送系統
-                </li>
-                <li style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                    🔄 Webhook 數據轉發
-                </li>
-                <li style="padding: 0.5rem 0;">
-                    📊 系統健康監控
-                </li>
-            </ul>
-        </div>
-
-        <div class="card">
-            <h2>🚀 快速開始</h2>
-            <p style="margin-bottom: 1rem;">選擇您需要的功能：</p>
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                <a href="/mail" class="btn success">
-                    📧 發送市場報告
-                </a>
-                <a href="/api/current-data" class="btn">
-                    📊 查看當前數據
-                </a>
-                <a href="/health" class="btn">
-                    🔍 系統健康檢查
-                </a>
-            </div>
-        </div>
+        <h1>🚀 {CONFIG['SYSTEM_INFO']['name']}</h1>
+        <p>{CONFIG['SYSTEM_INFO']['description']}</p>
+        <p>版本: {CONFIG['SYSTEM_INFO']['version']}</p>
+        <a href="/docs" class="btn">📚 API 文檔</a>
+        <a href="/health" class="btn">🔍 健康檢查</a>
     </div>
-
-    <script>
-        async function checkStatus() {{
-            try {{
-                const response = await fetch('/health');
-                const data = await response.json();
-
-                document.getElementById('status').style.background = 'rgba(16, 185, 129, 0.2)';
-                document.getElementById('status').innerHTML = 
-                    '✅ 系統運行正常<br>時間: ' + data.timestamp + '<br>版本: ' + data.version;
-
-                const dataResponse = await fetch('/api/current-data');
-                const dataResult = await dataResponse.json();
-
-                if (dataResult.data && Object.keys(dataResult.data).length > 0) {{
-                    document.getElementById('data-info').innerHTML = 
-                        '<h3 style="color: var(--success); margin-top: 1rem;">📈 當前市場資料</h3>' +
-                        '<p>情感分數: <strong>' + dataResult.data.average_sentiment_score + '</strong></p>' +
-                        '<p>接收時間: ' + dataResult.data.received_time + '</p>' +
-                        '<p style="margin-top: 1rem;"><a href="/mail" class="btn success">📧 立即發送報告</a></p>';
-                }} else {{
-                    document.getElementById('data-info').innerHTML = 
-                        '<h3 style="color: var(--text-muted); margin-top: 1rem;">⏳ 等待市場資料</h3>' +
-                        '<p>請確認 N8N 工作流程已正確運行</p>';
-                }}
-
-            }} catch (error) {{
-                document.getElementById('status').style.background = 'rgba(239, 68, 68, 0.2)';
-                document.getElementById('status').innerHTML = '❌ 系統連接失敗: ' + error.message;
-            }}
-        }}
-
-        checkStatus();
-        setInterval(checkStatus, 30000);
-    </script>
 </body>
 </html>"""
 
@@ -1133,7 +720,6 @@ def get_default_mail_html():
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>市場分析郵件發送</title>
     <style>
-        /* 基本樣式，實際應該使用外部 CSS 檔案 */
         body { font-family: Arial, sans-serif; margin: 2rem; background: #f5f5f5; }
         .container { max-width: 800px; margin: 0 auto; }
         .card { background: white; padding: 2rem; margin: 1rem 0; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -1196,11 +782,11 @@ def get_default_mail_html():
             const formData = {
                 recipient_email: document.getElementById('recipient').value,
                 subject: document.getElementById('subject').value,
-                custom_message: document.getElementById('custom_message').value
+                custom_content: document.getElementById('custom_message').value
             };
 
             try {
-                const response = await fetch('/api/send-mail-to-n8n', {
+                const response = await fetch('/api/send-email', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData)
@@ -1278,13 +864,10 @@ async def startup_event():
     """應用啟動時的初始化"""
     logger.info("🚀 市場分析報告系統啟動中...")
     logger.info(f"📡 目標 Webhook URL: {CONFIG['WEBHOOK_CONFIG']['send_url']}")
-    logger.info(f"📧 N8N Webhook URL: {CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url']}")
     logger.info(f"🌐 伺服器位置: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}")
     logger.info(f"📖 API 文檔: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}/docs")
     logger.info(f"📧 郵件發送頁面: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}/mail")
     logger.info(f"🔧 環境模式: {os.getenv('ENVIRONMENT', 'development')}")
-    logger.info(
-        f"🎯 功能標誌: {sum(1 for v in CONFIG['FEATURE_FLAGS'].values() if v)}/{len(CONFIG['FEATURE_FLAGS'])} 已啟用")
     logger.info("✅ 系統啟動完成")
 
 
@@ -1339,7 +922,6 @@ def main():
     """主程式函數"""
     print("🚀 啟動市場分析報告系統...")
     print(f"📡 目標 Webhook URL: {CONFIG['WEBHOOK_CONFIG']['send_url']}")
-    print(f"📧 N8N Webhook URL: {CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url']}")
     print(f"🌐 伺服器位置: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}")
     print(f"📖 API 文檔: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}/docs")
     print(f"📧 郵件發送頁面: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}/mail")

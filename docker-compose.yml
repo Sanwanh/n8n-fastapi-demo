@@ -1,164 +1,63 @@
 # ================================
-# 市場分析報告系統 - 修正版 Dockerfile
-# Market Analysis Report System - Fixed Dockerfile
+# 市場分析報告系統 - 修正版 Docker Compose 配置
+# Market Analysis Report System - Fixed Docker Compose Configuration
 # ================================
 
-# 使用官方 Python 基礎映像
-FROM python:3.11-slim as base
+services:
+  # 主要應用服務
+  market-analysis:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_DATE: ${BUILD_DATE:-}
+    container_name: market-analysis-app
+    ports:
+      - "${SERVER_PORT:-8089}:8089"
+    environment:
+      # 基本配置
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
 
-# 設定建構參數
-ARG PYTHON_VERSION=3.11
-ARG BUILD_DATE
-ARG VCS_REF
+      # 伺服器配置
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8089
 
-# 設定標籤
-LABEL maintainer="Market Analysis Team" \
-      version="1.3.0" \
-      description="Market Analysis Report System with Mail Sender" \
-      python.version="${PYTHON_VERSION}" \
-      build.date="${BUILD_DATE}" \
-      vcs.ref="${VCS_REF}"
+      # Webhook 配置
+      WEBHOOK_URL: ${WEBHOOK_URL:-https://beloved-swine-sensibly.ngrok-free.app/webhook-test/ef5ac185-f41a-4a2d-9a78-33d329184c2}
+      WEBHOOK_TIMEOUT: 30
 
-# 設定環境變數
-ENV PYTHONPATH=/app \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    TZ=Asia/Taipei \
-    DEBIAN_FRONTEND=noninteractive
+      # 時區設定
+      TZ: Asia/Taipei
+    volumes:
+      # 資料持久化
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./backups:/app/backups
+      - ./cache:/app/cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "/app/healthcheck.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-# ================================
-# 系統依賴安裝階段
-# ================================
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    # 基本工具
-    curl \
-    wget \
-    ca-certificates \
-    # 網路工具
-    netcat-traditional \
-    # 建構工具（編譯 Python 套件需要）
-    gcc \
-    g++ \
-    libc6-dev \
-    libffi-dev \
-    # 時區設定
-    tzdata \
-    # 清理 apt 快取
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /tmp/* \
-    && rm -rf /var/tmp/*
+  # Redis 快取服務（可選）
+  redis:
+    image: redis:7-alpine
+    container_name: market-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    profiles:
+      - redis
 
-# 設定時區
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
-# ================================
-# 使用者建立階段
-# ================================
-# 建立應用程式使用者（安全考量）
-RUN groupadd --gid 1000 appuser \
-    && useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash appuser
-
-# ================================
-# Python 依賴安裝階段
-# ================================
-# 設定工作目錄
-WORKDIR /app
-
-# 複製 requirements.txt
-COPY requirements.txt .
-
-# 升級 pip 並安裝 Python 依賴（修正版）
-RUN pip install --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir -r requirements.txt
-
-# ================================
-# 應用程式檔案複製階段
-# ================================
-# 複製主要應用程式檔案
-COPY --chown=appuser:appuser main.py .
-COPY --chown=appuser:appuser config.py .
-COPY --chown=appuser:appuser models.py .
-
-# 複製前端檔案
-COPY --chown=appuser:appuser frontend/ ./frontend/
-
-# 複製 Docker 相關檔案
-COPY --chown=appuser:appuser docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-# 複製 Docker 配置目錄（如果存在）
-COPY --chown=appuser:appuser docker/ ./docker/ 2>/dev/null || true
-
-# ================================
-# 目錄建立階段
-# ================================
-# 建立必要的目錄並設定權限
-RUN mkdir -p /app/logs /app/data /app/cache /app/backups \
-    && chown -R appuser:appuser /app
-
-# ================================
-# 健康檢查腳本
-# ================================
-# 建立 Python 健康檢查腳本
-RUN echo 'import requests\nimport sys\ntry:\n    response = requests.get("http://localhost:8089/health", timeout=10)\n    if response.status_code == 200:\n        print("✅ 健康檢查通過")\n        sys.exit(0)\n    else:\n        print(f"❌ 健康檢查失敗: HTTP {response.status_code}")\n        sys.exit(1)\nexcept Exception as e:\n    print(f"❌ 健康檢查失敗: {e}")\n    sys.exit(1)' > /app/healthcheck.py \
-    && chmod +x /app/healthcheck.py \
-    && chown appuser:appuser /app/healthcheck.py
-
-# ================================
-# 安全性設定
-# ================================
-# 切換到非 root 使用者
-USER appuser
-
-# 設定預設環境變數
-ENV SERVER_HOST=0.0.0.0 \
-    SERVER_PORT=8089 \
-    DEBUG=false \
-    LOG_LEVEL=INFO \
-    ENVIRONMENT=production
-
-# ================================
-# 暴露端口
-# ================================
-EXPOSE 8089
-
-# ================================
-# 健康檢查
-# ================================
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python /app/healthcheck.py
-
-# ================================
-# 容器標籤
-# ================================
-LABEL org.opencontainers.image.title="Market Analysis System" \
-      org.opencontainers.image.description="智能市場分析報告發送系統" \
-      org.opencontainers.image.version="1.3.0" \
-      org.opencontainers.image.created="${BUILD_DATE}" \
-      org.opencontainers.image.vendor="AI Development Team"
-
-# ================================
-# 啟動命令
-# ================================
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["python", "main.py"]
-
-# ================================
-# 建構和使用說明
-# ================================
-# 建構命令:
-# docker build --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') -t market-analysis:latest .
-#
-# 運行命令:
-# docker run -d --name market-analysis -p 8089:8089 \
-#   -e WEBHOOK_URL=your_webhook_url \
-#   -e N8N_WEBHOOK_URL=your_n8n_webhook_url \
-#   market-analysis:latest
-#
-# 除錯模式:
-# docker run -it --rm -p 8089:8089 \
-#   -e DEBUG=true \
-#   market-analysis:latest bash
+# 資料卷
+volumes:
+  redis_data:
+    driver: local
