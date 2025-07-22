@@ -1,106 +1,181 @@
-# 市場分析郵件系統 - 完整檔案結構
+# 市場分析報告系統 v2.0.0
 
-## 📁 專案目錄結構
+> 智能市場分析 • 即時黃金價格 • N8N 整合 • 自動化郵件發送
+
+## 🚀 系統特色
+
+- **📊 即時黃金價格顯示** - 使用 yfinance 獲取即時黃金期貨價格
+- **📈 互動式價格圖表** - Chart.js 驅動的專業級價格圖表
+- **🧠 智能情感分析** - N8N 工作流程整合的市場情感分析
+- **📧 獨立郵件發送頁面** - 分離式郵件配置和發送界面
+- **🌐 雙服務架構** - API 服務與 Web 服務分離
+- **🔗 ngrok 隧道支援** - 輕鬆分享給外部用戶訪問
+- **🐳 Docker 容器化** - 一鍵部署，環境隔離
+
+## 📁 系統架構
 
 ```
-market_analysis_system/
-├── 📄 main.py                          # 主程式 (更新版本)
-├── 📄 config.py                        # 系統配置檔案
-├── 📄 models.py                        # 資料模型定義
-├── 📄 requirements.txt                 # Python 依賴套件
-├── 📄 Dockerfile                       # Docker 容器配置
-├── 📄 docker-compose.yml               # Docker Compose 配置
-├── 📄 docker-entrypoint.sh             # Docker 啟動腳本
-├── 📄 setup-docker.sh                  # Docker 配置建立腳本
-├── 📄 README.md                        # 專案說明文件
-├── 📁 frontend/                        # 前端檔案目錄
-│   ├── 📄 index.html                   # 主頁面 (更新版本)
-│   ├── 📄 mail.html                    # 郵件發送頁面 (新增)
-│   └── 📁 static/                      # 靜態資源目錄
-│       ├── 📄 style.css                # 主頁面樣式
-│       ├── 📄 script.js                # 主頁面腳本
-│       ├── 📄 mail-style.css           # 郵件頁面樣式 (新增)
-│       └── 📄 mail-script.js           # 郵件頁面腳本 (新增)
-├── 📁 docker/                          # Docker 相關配置
-│   ├── 📄 prometheus.yml               # Prometheus 監控配置
-│   └── 📄 healthcheck.sh               # 健康檢查腳本
-├── 📁 logs/                            # 日誌檔案目錄
-│   └── 📄 market_analysis.log          # 系統日誌檔案
-├── 📁 data/                            # 資料儲存目錄
-├── 📁 backups/                         # 備份檔案目錄
-└── 📁 cache/                           # 快取檔案目錄
+market_analysis_system_v2/
+├── 🖥️  API 服務 (Port 8089)
+│   ├── FastAPI 後端
+│   ├── 市場數據處理
+│   ├── 黃金價格 API
+│   └── N8N 整合
+├── 🌐 Web 服務 (Port 8080)
+│   ├── 靜態檔案服務
+│   ├── 主頁面 (市場數據 + 黃金價格)
+│   └── 郵件發送頁面
+├── 🔗 ngrok 隧道 (Port 4040)
+│   ├── Web 外部訪問
+│   └── API 外部訪問
+└── 📊 監控服務 (可選)
+    ├── Prometheus (Port 9090)
+    └── Grafana (Port 3000)
 ```
 
-## 🔄 主要更新內容
+## 🛠️ 快速開始
 
-### 1. 新增郵件發送頁面
-- **檔案**: `frontend/mail.html`
-- **功能**: 獨立的郵件發送介面
-- **特色**: 
-  - 完整的表單驗證
-  - 即時市場數據顯示
-  - 郵件預覽功能
-  - 多種配置選項
+### 方法一：使用快速啟動腳本（推薦）
 
-### 2. 郵件頁面樣式
-- **檔案**: `frontend/static/mail-style.css`
-- **特色**:
-  - 現代化設計風格
-  - 響應式佈局
-  - 豐富的動畫效果
-  - 深色主題
+```bash
+# 1. 克隆或下載項目檔案
+git clone <repository-url>
+cd market_analysis_system_v2
 
-### 3. 郵件頁面腳本
-- **檔案**: `frontend/static/mail-script.js`
-- **功能**:
-  - 表單處理與驗證
-  - 市場數據載入
-  - 郵件內容生成
+# 2. 設定 ngrok authtoken（可選）
+# 編輯 .env 檔案，設定您的 NGROK_AUTHTOKEN
+
+# 3. 執行快速啟動腳本
+chmod +x start.sh
+./start.sh
+
+# 或直接啟動
+./start.sh start
+```
+
+### 方法二：手動 Docker Compose
+
+```bash
+# 1. 建立環境變數檔案
+cp .env.example .env
+
+# 2. 編輯 .env 檔案設定您的配置
+
+# 3. 啟動服務
+docker-compose up --build -d
+
+# 4. 查看服務狀態
+docker-compose ps
+```
+
+### 方法三：本地開發模式
+
+```bash
+# 1. 安裝 Python 依賴
+pip install -r requirements.txt
+
+# 2. 啟動 API 服務
+python main.py
+
+# 3. 另開終端啟動 Web 服務
+python web_server.py
+```
+
+## 🌐 服務訪問
+
+| 服務 | 本地訪問 | 說明 |
+|------|----------|------|
+| **主網站** | http://localhost:8080 | 市場數據 + 黃金價格顯示 |
+| **郵件頁面** | http://localhost:8080/mail | 獨立的郵件發送頁面 |
+| **API 服務** | http://localhost:8089 | RESTful API 接口 |
+| **API 文檔** | http://localhost:8089/api/docs | Swagger API 文檔 |
+| **健康檢查** | http://localhost:8089/health | 服務健康狀態 |
+| **ngrok 管理** | http://localhost:4040 | ngrok 隧道管理界面 |
+
+## 📊 主要功能
+
+### 1. 即時黃金價格監控
+
+- **數據來源**: Yahoo Finance (GC=F 黃金期貨)
+- **更新頻率**: 每分鐘自動刷新
+- **顯示內容**:
+  - 當前價格 (USD/oz)
+  - 價格變化和變化百分比
+  - 市場狀態（開市/休市）
+  - 最後更新時間
+  - 48小時價格走勢圖表
+
+### 2. 智能市場情感分析
+
+- **數據來源**: N8N 工作流程
+- **分析內容**:
+  - 情感分析分數 (-1.0 到 1.0)
+  - 市場情感文字描述
+  - 風險評估
+  - 趨勢方向
+  - 信心水平
+
+### 3. 郵件發送系統
+
+- **獨立頁面**: `/mail` 路由
+- **功能特色**:
+  - 收件人設定
+  - 自訂郵件主旨
+  - 個人化訊息
+  - 多種郵件選項
+  - 即時預覽功能
   - N8N webhook 整合
 
-### 4. 更新主程式
-- **檔案**: `main.py`
-- **新增功能**:
-  - `/mail` 路由 - 郵件發送頁面
-  - `/api/send-mail-to-n8n` API - 新的郵件發送接口
-  - `/api/test-n8n-connection` API - N8N 連接測試
-  - 支援擴展的 N8N 資料格式
+## 🔧 API 接口
 
-### 5. 更新首頁
-- **檔案**: `frontend/index.html`
-- **改進**:
-  - 新增導航列
-  - 郵件發送頁面連結
-  - 更好的狀態顯示
-  - 快速操作區域
+### 核心 API
 
-## 🔌 API 端點說明
+```bash
+# 獲取當前市場數據
+GET /api/current-data
 
-### 現有 API (保持向後相容)
-```
-POST /api/n8n-data           # 接收 N8N 市場數據
-GET  /api/current-data       # 獲取當前市場數據
-POST /api/send-email         # 舊版郵件發送 API
-GET  /health                 # 系統健康檢查
-GET  /api/stats              # 系統統計資料
-GET  /api/test-connection    # 測試 webhook 連接
-GET  /api/config             # 前端配置資料
+# 獲取黃金價格
+GET /api/gold-price
+
+# 接收 N8N 數據
+POST /api/n8n-data
+
+# 發送郵件到 N8N
+POST /api/send-mail-to-n8n
+
+# 測試 N8N 連接
+GET /api/test-n8n-connection
+
+# 系統健康檢查
+GET /health
 ```
 
-### 新增 API
-```
-GET  /mail                   # 郵件發送頁面
-POST /api/send-mail-to-n8n   # 新版郵件發送 API
-GET  /api/test-n8n-connection # 測試 N8N 連接
+### 數據格式範例
+
+#### 黃金價格 API 回應
+```json
+{
+  "status": "success",
+  "data": {
+    "symbol": "GC=F",
+    "name": "Gold Futures",
+    "current_price": 2023.45,
+    "change": 12.30,
+    "change_percent": 0.61,
+    "currency": "USD",
+    "unit": "per ounce",
+    "last_updated": "2025-07-22T08:30:00Z",
+    "market_status": "open",
+    "chart_data": [...]
+  }
+}
 ```
 
-## 📊 N8N 資料格式
-
-### 輸入資料格式 (從 N8N 接收)
+#### N8N 數據格式
 ```json
 {
   "average_sentiment_score": -0.17,
-  "message_content": "今日市場概述：黃金期貨維持在窄幅震盪區間...",
+  "message_content": "今日市場概述...",
   "market_date": "2025年07月22日",
   "confidence_level": "較低",
   "trend_direction": "溫和看跌",
@@ -108,224 +183,285 @@ GET  /api/test-n8n-connection # 測試 N8N 連接
 }
 ```
 
-### 輸出資料格式 (發送到 N8N)
-```json
-{
-  "average_sentiment_score": -0.17,
-  "message_content": "今日市場概述：黃金期貨維持在窄幅震盪區間...",
-  "market_date": "2025年07月22日",
-  "confidence_level": "較低",
-  "trend_direction": "溫和看跌", 
-  "risk_assessment": "低風險",
-  "received_time": "2025-07-22 00:25:17",
-  "mail_config": {
-    "recipient_email": "user@example.com",
-    "sender_name": "市場分析系統",
-    "subject": "市場分析報告 - 2025年07月22日",
-    "priority": "normal",
-    "mail_type": "daily",
-    "custom_message": "自訂內容...",
-    "include_charts": true,
-    "include_recommendations": true,
-    "include_risk_warning": true
-  },
-  "system_info": {
-    "send_timestamp": "2025-07-22T00:30:00.000Z",
-    "system_version": "1.3.0",
-    "source": "mail-sender-page"
-  },
-  "sentiment_analysis": {
-    "score": -0.17,
-    "text": "略為悲觀",
-    "emoji": "📉🟡😐"
-  }
-}
-```
+## 🔗 ngrok 隧道設定
 
-## 🚀 部署指南
+### 1. 獲取 ngrok Authtoken
 
-### 方法一：Docker 部署 (推薦)
 ```bash
-# 1. 使用提供的 Docker 配置腳本
-./setup-docker.sh
+# 1. 註冊 ngrok 帳號
+https://ngrok.com/signup
 
-# 2. 啟動系統
-./deploy.sh
+# 2. 獲取您的 authtoken
+https://dashboard.ngrok.com/get-started/your-authtoken
 
-# 或使用 docker-compose
-docker-compose up -d
+# 3. 設定到 .env 檔案
+NGROK_AUTHTOKEN=your_token_here
 ```
 
-### 方法二：直接運行
-```bash
-# 1. 安裝依賴
-pip install -r requirements.txt
+### 2. 隧道配置
 
-# 2. 啟動系統
-python main.py
+系統會自動建立兩個隧道：
+- **Web 隧道**: 供用戶訪問網站
+- **API 隧道**: 供 N8N 回調使用
 
-# 或使用 uvicorn
-uvicorn main:app --host 0.0.0.0 --port 8089
-```
+## 📋 環境配置
 
-## 🔧 配置說明
+### 必需環境變數
 
-### 環境變數設定
 ```bash
 # 基本配置
-SERVER_HOST=0.0.0.0
-SERVER_PORT=8089
+ENVIRONMENT=production
 DEBUG=false
 LOG_LEVEL=INFO
 
+# 服務端口
+API_PORT=8089
+WEB_PORT=8080
+
 # Webhook 配置
-WEBHOOK_URL=https://beloved-swine-sensibly.ngrok-free.app/webhook-test/ef5ac185-f41a-4a2d-9a78-33d329184c2
-WEBHOOK_TIMEOUT=30
+WEBHOOK_URL=your_n8n_webhook_url
 
-# N8N Webhook (新增)
-N8N_WEBHOOK_URL=https://beloved-swine-sensibly.ngrok-free.app/webhook/Webhook%20-%20Preview
-
-# 安全配置
-API_KEY=your_api_key_here
-CORS_ORIGINS=*
+# ngrok 配置
+NGROK_AUTHTOKEN=your_ngrok_token
 ```
 
-### 重要配置項目
-- **WEBHOOK_URL**: 舊版 webhook 端點 (保持向後相容)
-- **N8N_WEBHOOK_URL**: 新版 N8N webhook 端點 (郵件發送頁面使用)
-- **SERVER_PORT**: 系統運行端口 (預設: 8089)
-- **DEBUG**: 除錯模式開關
+### 可選環境變數
 
-## 📱 使用說明
-
-### 1. 首頁功能
-- 訪問 `http://localhost:8089/`
-- 查看系統狀態和當前市場數據
-- 快速導航到各功能頁面
-
-### 2. 郵件發送頁面
-- 訪問 `http://localhost:8089/mail`
-- 配置郵件相關設定
-- 預覽郵件內容
-- 發送到 N8N webhook
-
-### 3. API 使用
 ```bash
-# 查看 API 文檔
-curl http://localhost:8089/docs
+# Redis 配置
+REDIS_PASSWORD=secure_password
 
-# 獲取當前數據
-curl http://localhost:8089/api/current-data
+# 監控配置
+GRAFANA_PASSWORD=admin123
 
-# 測試 N8N 連接
-curl http://localhost:8089/api/test-n8n-connection
-
-# 健康檢查
-curl http://localhost:8089/health
+# 建置配置
+BUILD_DATE=auto_generated
 ```
 
-## 🔄 資料流程
+## 🐳 Docker 部署
 
-```
-N8N 工作流程 
-    ↓ (POST /api/n8n-data)
-系統接收並儲存市場數據
-    ↓
-使用者在郵件頁面配置郵件
-    ↓ (POST /api/send-mail-to-n8n)
-系統整合數據並發送到 N8N
-    ↓ (POST webhook/Webhook - Preview)
-N8N 處理郵件發送
-    ↓
-郵件發送到收件人
-```
-
-## 🛠️ 開發指南
-
-### 新增功能步驟
-1. **後端 API**: 在 `main.py` 中新增路由
-2. **前端頁面**: 在 `frontend/` 目錄建立 HTML
-3. **樣式設計**: 在 `frontend/static/` 建立 CSS
-4. **互動功能**: 在 `frontend/static/` 建立 JS
-5. **配置更新**: 更新 `config.py` 相關設定
-
-### 程式碼結構
-- **main.py**: FastAPI 應用主體
-- **config.py**: 系統配置管理
-- **models.py**: 資料模型定義
-- **frontend/**: 前端檔案
-- **static/**: 靜態資源
-
-## 🐛 故障排除
-
-### 常見問題
-1. **郵件發送失敗**
-   - 檢查 N8N webhook URL 是否正確
-   - 確認網路連接正常
-   - 查看系統日誌 `logs/market_analysis.log`
-
-2. **市場數據未顯示**
-   - 確認 N8N 工作流程正常運行
-   - 檢查資料格式是否符合預期
-   - 使用 `/api/current-data` 檢查原始數據
-
-3. **系統無法啟動**
-   - 檢查端口 8089 是否被佔用
-   - 確認 Python 依賴已正確安裝
-   - 查看啟動日誌
-
-### 日誌檢查
+### 單服務部署
 ```bash
-# 查看系統日誌
-tail -f logs/market_analysis.log
+# 僅啟動主要服務
+docker-compose up -d market-analysis
+```
 
-# 查看 Docker 日誌
+### 完整部署
+```bash
+# 啟動所有服務包括 ngrok
+docker-compose up -d
+```
+
+### 監控部署
+```bash
+# 啟動監控服務
+docker-compose --profile monitoring up -d
+```
+
+### 快取部署
+```bash
+# 啟動 Redis 快取
+docker-compose --profile redis up -d
+```
+
+## 📊 監控與日誌
+
+### 查看服務狀態
+```bash
+# 使用腳本
+./start.sh status
+
+# 或直接使用 docker-compose
+docker-compose ps
+```
+
+### 查看日誌
+```bash
+# 即時日誌
+./start.sh logs
+
+# 或指定服務
 docker-compose logs -f market-analysis
 ```
 
-## 📋 檢查清單
+### Prometheus 指標
+```bash
+# 訪問 Prometheus
+http://localhost:9090
 
-### 部署前檢查
-- [ ] 已安裝所有依賴套件
-- [ ] 配置檔案設定正確
-- [ ] N8N webhook URL 可訪問
-- [ ] 端口 8089 未被佔用
-- [ ] 日誌目錄有寫入權限
+# 常用指標
+- http_requests_total
+- response_time_seconds
+- system_cpu_usage
+- memory_usage_bytes
+```
 
-### 功能測試檢查
-- [ ] 首頁正常載入並顯示狀態
-- [ ] 郵件頁面可正常訪問
-- [ ] 可以接收 N8N 市場數據
-- [ ] 郵件發送功能正常
-- [ ] API 文檔可正常訪問
-- [ ] 健康檢查回應正常
+## 🔧 開發指南
 
-## 🔮 未來擴展
+### 本地開發環境
 
-### 計畫功能
-- [ ] 使用者帳戶管理
-- [ ] 郵件範本自定義
-- [ ] 歷史數據查詢
-- [ ] 進階分析圖表
-- [ ] 排程郵件發送
-- [ ] 多語言支援
+```bash
+# 1. 建立虛擬環境
+python -m venv venv
+source venv/bin/activate  # Linux/macOS
+# 或
+venv\Scripts\activate     # Windows
 
-### 技術改進
-- [ ] 資料庫整合 (PostgreSQL/MongoDB)
-- [ ] Redis 快取層
-- [ ] 訊息佇列 (Celery)
-- [ ] 監控儀表板 (Grafana)
-- [ ] 單元測試覆蓋
-- [ ] CI/CD 流程
+# 2. 安裝依賴
+pip install -r requirements.txt
 
-## 📞 聯絡資訊
+# 3. 設定環境變數
+export DEBUG=true
+export LOG_LEVEL=DEBUG
 
-如有任何問題或建議，請：
-1. 查看系統日誌檔案
-2. 檢查 GitHub Issues (如果有的話)
-3. 聯繫系統管理員
+# 4. 啟動開發服務器
+python main.py  # API 服務
+python web_server.py  # Web 服務
+```
+
+### 檔案結構
+
+```
+├── main.py              # API 服務主程式
+├── web_server.py        # Web 服務主程式
+├── config.py            # 系統配置
+├── models.py            # 資料模型
+├── requirements.txt     # Python 依賴
+├── Dockerfile           # Docker 配置
+├── docker-compose.yml   # Compose 配置
+├── ngrok.yml           # ngrok 配置
+├── start.sh            # 快速啟動腳本
+├── frontend/           # 前端檔案
+│   ├── index.html      # 主頁面
+│   ├── mail.html       # 郵件頁面
+│   └── static/         # 靜態資源
+│       ├── style.css   # 樣式檔案
+│       ├── mail-style.css
+│       ├── script.js   # 腳本檔案
+│       └── mail-script.js
+└── logs/               # 日誌檔案
+```
+
+## 🛠️ 故障排除
+
+### 常見問題
+
+#### 1. 服務無法啟動
+```bash
+# 檢查端口是否被占用
+sudo netstat -tlnp | grep :8089
+sudo netstat -tlnp | grep :8080
+
+# 強制停止並重啟
+./start.sh stop
+./start.sh start
+```
+
+#### 2. 黃金價格無法獲取
+```bash
+# 檢查網路連接
+curl -s "https://finance.yahoo.com" > /dev/null && echo "網路正常"
+
+# 查看 API 日誌
+docker-compose logs market-analysis | grep gold
+```
+
+#### 3. N8N 連接失敗
+```bash
+# 測試 webhook 連接
+curl -X GET http://localhost:8089/api/test-n8n-connection
+
+# 檢查 webhook URL 設定
+grep WEBHOOK_URL .env
+```
+
+#### 4. ngrok 隧道無法建立
+```bash
+# 檢查 authtoken
+grep NGROK_AUTHTOKEN .env
+
+# 查看 ngrok 日誌
+docker-compose logs ngrok
+```
+
+### 效能優化
+
+#### 1. 記憶體使用優化
+```bash
+# 限制容器記憶體使用
+docker-compose up -d --memory="512m"
+```
+
+#### 2. 快取配置
+```bash
+# 啟用 Redis 快取
+./start.sh cache
+```
+
+#### 3. 監控設定
+```bash
+# 啟用完整監控
+./start.sh monitoring
+```
+
+## 📞 技術支援
+
+### 日誌位置
+- **容器日誌**: `docker-compose logs`
+- **應用日誌**: `./logs/market_analysis.log`
+- **系統日誌**: `/var/log/syslog`
+
+### 健康檢查
+```bash
+# API 健康檢查
+curl http://localhost:8089/health
+
+# Web 服務檢查
+curl http://localhost:8080/
+
+# 完整服務檢查
+./start.sh status
+```
+
+### 備份與恢復
+```bash
+# 建立備份
+docker-compose exec market-analysis tar -czf /app/backups/backup-$(date +%Y%m%d).tar.gz /app/data
+
+# 恢復備份
+docker-compose exec market-analysis tar -xzf /app/backups/backup-YYYYMMDD.tar.gz -C /
+```
+
+## 🔄 版本更新
+
+### 更新到最新版本
+```bash
+# 1. 停止服務
+./start.sh stop
+
+# 2. 拉取最新代碼
+git pull origin main
+
+# 3. 重建並啟動
+./start.sh start
+```
+
+### 版本歷史
+- **v2.0.0**: 分離式架構 + 黃金價格 + ngrok 支援
+- **v1.3.0**: 郵件發送頁面 + N8N 整合增強
+- **v1.2.0**: 基本市場分析功能
+- **v1.0.0**: 初始版本
 
 ---
 
-**版本**: 1.3.0  
-**最後更新**: 2025-07-22
+## 📄 授權條款
+
+本項目採用 MIT 授權條款。
+
+## 🤝 貢獻指南
+
+歡迎提交 Issue 和 Pull Request 來改善本項目。
+
+---
+
+**市場分析報告系統 v2.0.0** - 智能分析 • 精準決策 🚀

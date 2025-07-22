@@ -1,10 +1,7 @@
-# ================================
-# 市場分析報告系統 - 修正版 Docker Compose 配置
-# Market Analysis Report System - Fixed Docker Compose Configuration
-# ================================
+version: '3.8'
 
 services:
-  # 主要應用服務
+  # 主要應用服務（整合 API + Web）
   market-analysis:
     build:
       context: .
@@ -13,14 +10,14 @@ services:
         BUILD_DATE: ${BUILD_DATE:-}
     container_name: market-analysis-app
     ports:
-      - "${SERVER_PORT:-8089}:8089"
+      - "${SERVER_PORT:-8089}:8089"  # 統一服務端口
     environment:
       # 基本配置
       ENVIRONMENT: ${ENVIRONMENT:-production}
       DEBUG: ${DEBUG:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
 
-      # 伺服器配置
+      # 服務配置
       SERVER_HOST: 0.0.0.0
       SERVER_PORT: 8089
 
@@ -40,9 +37,30 @@ services:
     healthcheck:
       test: ["CMD", "python", "/app/healthcheck.py"]
       interval: 30s
-      timeout: 10s
+      timeout: 15s
       retries: 3
-      start_period: 40s
+      start_period: 60s
+    networks:
+      - market-network
+
+  # ngrok 服務 - 端口改為 4041
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: market-ngrok
+    restart: unless-stopped
+    command:
+      - "http"
+      - "market-analysis:8089"
+      - "--authtoken"
+      - "2zzNP5hnqCVT1EkLieXmLyNEUnX_7RqY7RwqEPheVpbbeRRX6"
+    ports:
+      - "4041:4040"
+    environment:
+      NGROK_AUTHTOKEN: 2zzNP5hnqCVT1EkLieXmLyNEUnX_7RqY7RwqEPheVpbbeRRX6
+    depends_on:
+      - market-analysis
+    networks:
+      - market-network
 
   # Redis 快取服務（可選）
   redis:
@@ -54,10 +72,60 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    networks:
+      - market-network
     profiles:
       - redis
+
+  # Prometheus 監控（可選）
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: market-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - market-network
+    profiles:
+      - monitoring
+
+  # Grafana 儀表板（可選）
+  grafana:
+    image: grafana/grafana:latest
+    container_name: market-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+      GF_USERS_ALLOW_SIGN_UP: false
+    restart: unless-stopped
+    networks:
+      - market-network
+    profiles:
+      - monitoring
+
+# 網路設定
+networks:
+  market-network:
+    driver: bridge
 
 # 資料卷
 volumes:
   redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
     driver: local

@@ -35,7 +35,7 @@
                 <i class="fas fa-paper-plane"></i>
             </div>
             <h1>市場分析郵件發送</h1>
-            <p>將 N8N 市場分析數據通過郵件發送</p>
+            <p>將市場分析數據通過郵件發送</p>
         </header>
 
         <!-- 主要內容 -->
@@ -100,35 +100,7 @@
                                     郵件主旨
                                 </label>
                                 <input type="text" id="subject" name="subject"
-                                       value="市場分析報告 - {date}" placeholder="請輸入郵件主旨">
-                            </div>
-
-                            <!-- 優先級設定 -->
-                            <div class="form-group">
-                                <label for="priority">
-                                    <i class="fas fa-flag"></i>
-                                    郵件優先級
-                                </label>
-                                <select id="priority" name="priority">
-                                    <option value="low">低優先級</option>
-                                    <option value="normal" selected>一般優先級</option>
-                                    <option value="high">高優先級</option>
-                                    <option value="urgent">緊急</option>
-                                </select>
-                            </div>
-
-                            <!-- 郵件類型 -->
-                            <div class="form-group">
-                                <label for="mail_type">
-                                    <i class="fas fa-tags"></i>
-                                    郵件類型
-                                </label>
-                                <select id="mail_type" name="mail_type">
-                                    <option value="daily">每日報告</option>
-                                    <option value="weekly">週度分析</option>
-                                    <option value="alert" selected>市場警示</option>
-                                    <option value="summary">市場摘要</option>
-                                </select>
+                                       value="市場分析報告" placeholder="請輸入郵件主旨">
                             </div>
 
                             <!-- 自訂內容 -->
@@ -188,10 +160,6 @@
 
                         <!-- 發送按鈕 -->
                         <div class="form-actions">
-                            <button type="button" id="preview-btn" class="btn btn-secondary">
-                                <i class="fas fa-eye"></i>
-                                預覽郵件
-                            </button>
                             <button type="submit" id="send-btn" class="btn btn-primary" disabled>
                                 <span class="btn-icon">
                                     <i class="fas fa-paper-plane"></i>
@@ -203,28 +171,6 @@
                             </button>
                         </div>
                     </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- 預覽模態框 -->
-        <div class="modal" id="preview-modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>
-                        <i class="fas fa-eye"></i>
-                        郵件預覽
-                    </h3>
-                    <button class="modal-close" id="preview-close">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div id="email-preview"></div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" id="preview-cancel">取消</button>
-                    <button class="btn btn-primary" id="preview-send">確認發送</button>
                 </div>
             </div>
         </div>
@@ -243,7 +189,6 @@
                 </div>
                 <div class="modal-body">
                     <div id="result-message">郵件已成功發送！</div>
-                    <div id="result-details"></div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-primary" id="result-ok">確定</button>
@@ -252,6 +197,249 @@
         </div>
     </div>
 
-    <script src="/static/mail-script.js"></script>
+    <script>
+        let currentMarketData = null;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMarketData();
+            bindEvents();
+        });
+
+        // 載入市場數據
+        async function loadMarketData() {
+            try {
+                updateStatus('loading', '載入中...');
+
+                const response = await fetch('/api/current-data');
+                const result = await response.json();
+
+                if (result.data && Object.keys(result.data).length > 0) {
+                    currentMarketData = result.data;
+                    displayMarketData(result.data);
+                    updateStatus('connected', '已更新');
+                    validateForm();
+                } else {
+                    displayNoData();
+                    updateStatus('waiting', '等待數據...');
+                }
+            } catch (error) {
+                console.error('載入市場數據失敗:', error);
+                displayError('無法載入市場數據: ' + error.message);
+                updateStatus('error', '連接錯誤');
+            }
+        }
+
+        // 顯示市場數據
+        function displayMarketData(data) {
+            const sentimentClass = getSentimentClass(data.average_sentiment_score);
+            const sentimentText = getSentimentText(data.average_sentiment_score);
+
+            document.getElementById('market-data-display').innerHTML = `
+                <div class="market-data">
+                    <div class="data-row">
+                        <div class="data-label">
+                            <i class="fas fa-chart-line"></i>
+                            情感分析分數
+                        </div>
+                        <div class="data-value">
+                            <span class="sentiment-score ${sentimentClass}">
+                                ${data.average_sentiment_score?.toFixed(3)} (${sentimentText})
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="data-row">
+                        <div class="data-label">
+                            <i class="fas fa-calendar-day"></i>
+                            市場日期
+                        </div>
+                        <div class="data-value">${data.market_date || '今日'}</div>
+                    </div>
+
+                    <div class="data-row">
+                        <div class="data-label">
+                            <i class="fas fa-clock"></i>
+                            接收時間
+                        </div>
+                        <div class="data-value">${data.received_time}</div>
+                    </div>
+
+                    <div class="data-row full-width">
+                        <div class="data-label">
+                            <i class="fas fa-newspaper"></i>
+                            市場分析內容
+                        </div>
+                        <div class="market-content">
+                            ${formatContent(data.message_content)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 顯示無數據
+        function displayNoData() {
+            document.getElementById('market-data-display').innerHTML = `
+                <div class="no-data">
+                    <i class="fas fa-chart-bar"></i>
+                    <h3>等待市場數據</h3>
+                    <p>請確認系統已接收到市場分析數據</p>
+                </div>
+            `;
+        }
+
+        // 顯示錯誤
+        function displayError(message) {
+            document.getElementById('market-data-display').innerHTML = `
+                <div class="error-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>數據載入失敗</h3>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // 更新狀態
+        function updateStatus(status, text) {
+            const dot = document.querySelector('#status-indicator .indicator-dot');
+            const textElement = document.querySelector('#status-indicator .indicator-text');
+
+            dot.classList.remove('connected', 'error', 'loading');
+            if (status !== 'waiting') {
+                dot.classList.add(status);
+            }
+            textElement.textContent = text;
+        }
+
+        // 表單驗證
+        function validateForm() {
+            const recipient = document.getElementById('recipient').value;
+            const subject = document.getElementById('subject').value;
+            const hasData = currentMarketData !== null;
+
+            const isValid = recipient && subject && hasData;
+            document.getElementById('send-btn').disabled = !isValid;
+        }
+
+        // 綁定事件
+        function bindEvents() {
+            document.getElementById('mail-form').addEventListener('submit', handleSubmit);
+            document.getElementById('result-close').addEventListener('click', hideModal);
+            document.getElementById('result-ok').addEventListener('click', hideModal);
+
+            const inputs = document.querySelectorAll('#mail-form input[required]');
+            inputs.forEach(input => {
+                input.addEventListener('input', validateForm);
+            });
+        }
+
+        // 處理表單提交
+        async function handleSubmit(e) {
+            e.preventDefault();
+
+            if (!currentMarketData) {
+                showModal('error', '發送失敗', '沒有可用的市場數據');
+                return;
+            }
+
+            setLoadingState(true);
+
+            try {
+                const formData = new FormData(e.target);
+
+                const mailData = {
+                    recipient_email: formData.get('recipient'),
+                    sender_name: formData.get('sender_name') || '市場分析系統',
+                    subject: formData.get('subject'),
+                    custom_message: formData.get('custom_message') || '',
+                    include_charts: formData.has('include_charts'),
+                    include_recommendations: formData.has('include_recommendations'),
+                    include_risk_warning: formData.has('include_risk_warning')
+                };
+
+                const response = await fetch('/api/send-mail-to-n8n', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(mailData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showModal('success', '發送成功', result.message);
+                } else {
+                    showModal('error', '發送失敗', result.detail || '發送失敗');
+                }
+
+            } catch (error) {
+                console.error('發送郵件失敗:', error);
+                showModal('error', '網路錯誤', '請檢查網路連接後重試');
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        // 設置加載狀態
+        function setLoadingState(loading) {
+            const sendBtn = document.getElementById('send-btn');
+            if (loading) {
+                sendBtn.classList.add('loading');
+                sendBtn.disabled = true;
+            } else {
+                sendBtn.classList.remove('loading');
+                validateForm();
+            }
+        }
+
+        // 顯示模態框
+        function showModal(type, title, message) {
+            const modal = document.getElementById('result-modal');
+            const icon = document.getElementById('result-icon');
+            const titleEl = document.getElementById('result-title');
+            const messageEl = document.getElementById('result-message');
+
+            icon.className = `modal-icon ${type}`;
+            icon.innerHTML = type === 'success' ?
+                '<i class="fas fa-check-circle"></i>' :
+                '<i class="fas fa-exclamation-circle"></i>';
+
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            modal.classList.add('show');
+        }
+
+        // 隱藏模態框
+        function hideModal() {
+            document.getElementById('result-modal').classList.remove('show');
+        }
+
+        // 輔助函數
+        function getSentimentClass(score) {
+            if (score > 0.1) return 'sentiment-positive';
+            if (score < -0.1) return 'sentiment-negative';
+            return 'sentiment-neutral';
+        }
+
+        function getSentimentText(score) {
+            if (score > 0.6) return '極度樂觀';
+            if (score > 0.3) return '樂觀';
+            if (score > 0.1) return '略為樂觀';
+            if (score > -0.1) return '中性';
+            if (score > -0.3) return '略為悲觀';
+            if (score > -0.6) return '悲觀';
+            return '極度悲觀';
+        }
+
+        function formatContent(content) {
+            if (!content) return '無市場分析內容';
+            if (content.length > 300) {
+                return content.substring(0, 300) + '...';
+            }
+            return content;
+        }
+    </script>
 </body>
 </html>

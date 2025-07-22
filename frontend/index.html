@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>N8N Mail Sender</title>
+    <title>市場分析報告系統</title>
     <link rel="stylesheet" href="/static/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 </head>
 <body>
     <div class="background-animation">
@@ -17,154 +18,586 @@
     </div>
 
     <div class="container">
-        <header class="modern-header">
+        <!-- 導航列 -->
+        <nav class="navigation">
+            <div class="nav-brand">
+                <i class="fas fa-chart-line"></i>
+                <span>市場分析系統</span>
+            </div>
+            <div class="nav-links">
+                <a href="/mail" class="nav-link">
+                    <i class="fas fa-envelope"></i>
+                    郵件發送
+                </a>
+                <a href="http://localhost:8089/api/docs" class="nav-link" target="_blank">
+                    <i class="fas fa-book"></i>
+                    API 文檔
+                </a>
+            </div>
+        </nav>
+
+        <!-- 頁面標題 -->
+        <header class="page-header">
             <div class="header-icon">
-                <i class="fas fa-paper-plane"></i>
+                <i class="fas fa-chart-bar"></i>
             </div>
-            <h1>N8N Mail Sender</h1>
-            <p>智能情感分析郵件發送平台</p>
-            <div class="header-decoration">
-                <div class="pulse-dot"></div>
-                <div class="pulse-dot delay-1"></div>
-                <div class="pulse-dot delay-2"></div>
-            </div>
+            <h1>市場分析報告系統</h1>
+            <p>智能情感分析 • 即時黃金價格 • 自動化報告</p>
         </header>
 
+        <!-- 主要內容 -->
         <div class="main-content">
-            <div class="card status-card">
+            <!-- 黃金價格卡片 -->
+            <div class="card gold-price-card">
                 <div class="card-header">
-                    <div class="card-icon">
-                        <i class="fas fa-chart-line"></i>
+                    <div class="card-icon gold-icon">
+                        <i class="fas fa-coins"></i>
                     </div>
-                    <h2>即時資料狀態</h2>
-                    <div class="status-indicator" id="status-indicator">
-                        <span class="indicator-dot"></span>
-                        <span class="indicator-text">連接中...</span>
+                    <h2>黃金期貨價格</h2>
+                    <div class="price-status" id="price-status">
+                        <span class="status-dot"></span>
+                        <span class="status-text">載入中...</span>
                     </div>
                 </div>
                 <div class="card-content">
-                    <div id="data-status" class="data-display">
+                    <!-- 價格顯示區域 -->
+                    <div class="price-display" id="price-display">
                         <div class="loading-spinner">
                             <div class="spinner"></div>
-                            <span>載入資料中...</span>
+                            <span>正在載入黃金價格...</span>
                         </div>
+                    </div>
+
+                    <!-- 圖表區域 -->
+                    <div class="chart-container" id="chart-container" style="display: none;">
+                        <canvas id="goldChart"></canvas>
                     </div>
                 </div>
             </div>
 
-            <div class="card form-card">
+            <!-- 市場分析數據卡片 -->
+            <div class="card data-card">
                 <div class="card-header">
                     <div class="card-icon">
-                        <i class="fas fa-envelope-open-text"></i>
+                        <i class="fas fa-brain"></i>
                     </div>
-                    <h2>郵件配置</h2>
+                    <h2>市場情感分析</h2>
+                    <div class="status-indicator" id="status-indicator">
+                        <span class="indicator-dot"></span>
+                        <span class="indicator-text">載入中...</span>
+                    </div>
                 </div>
                 <div class="card-content">
-                    <form id="email-form" class="modern-form">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="recipient_email">
-                                    <i class="fas fa-at"></i>
-                                    收件人信箱
-                                </label>
-                                <div class="input-wrapper">
-                                    <input type="email" id="recipient_email" name="recipient_email"
-                                           placeholder="example@gmail.com" required>
-                                    <span class="input-focus-line"></span>
-                                </div>
-                            </div>
+                    <div id="market-data-display">
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                            <span>正在載入市場數據...</span>
                         </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="subject">
-                                    <i class="fas fa-heading"></i>
-                                    郵件主旨
-                                </label>
-                                <div class="input-wrapper">
-                                    <input type="text" id="subject" name="subject"
-                                           value="N8N 情感分析報告" required>
-                                    <span class="input-focus-line"></span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="custom_content">
-                                    <i class="fas fa-edit"></i>
-                                    自訂內容 <span class="optional">(選填)</span>
-                                </label>
-                                <div class="textarea-wrapper">
-                                    <textarea id="custom_content" name="custom_content" rows="3"
-                                              placeholder="輸入您想要在郵件開頭加入的自訂內容..."></textarea>
-                                    <span class="input-focus-line"></span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="options-grid">
-                                <div class="custom-checkbox">
-                                    <input type="checkbox" id="include_sentiment" name="include_sentiment" checked>
-                                    <label for="include_sentiment">
-                                        <span class="checkbox-mark">
-                                            <i class="fas fa-check"></i>
-                                        </span>
-                                        <span class="checkbox-text">
-                                            <strong>包含情感分析</strong>
-                                            <small>顯示情感分數和評估結果</small>
-                                        </span>
-                                    </label>
-                                </div>
-
-                                <div class="custom-checkbox">
-                                    <input type="checkbox" id="include_message" name="include_message" checked>
-                                    <label for="include_message">
-                                        <span class="checkbox-mark">
-                                            <i class="fas fa-check"></i>
-                                        </span>
-                                        <span class="checkbox-text">
-                                            <strong>包含原始訊息</strong>
-                                            <small>附加完整的訊息內容</small>
-                                        </span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-actions">
-                            <button type="submit" id="send-btn" class="send-btn" disabled>
-                                <span class="btn-icon">
-                                    <i class="fas fa-rocket"></i>
-                                </span>
-                                <span class="btn-text">發送郵件</span>
-                                <div class="btn-ripple"></div>
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div class="result-modal" id="result-modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <div class="modal-icon" id="modal-icon">
-                        <i class="fas fa-check-circle"></i>
                     </div>
-                    <h3 id="modal-title">發送成功</h3>
-                    <button class="modal-close" id="modal-close">
-                        <i class="fas fa-times"></i>
-                    </button>
                 </div>
-                <div class="modal-body">
-                    <p id="modal-message">郵件已成功發送！</p>
+            </div>
+
+            <!-- 快速操作卡片 -->
+            <div class="card actions-card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h2>快速操作</h2>
+                </div>
+                <div class="card-content">
+                    <div class="action-buttons">
+                        <a href="/mail" class="action-btn primary">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>發送郵件報告</span>
+                        </a>
+                        <button onclick="refreshData()" class="action-btn secondary">
+                            <i class="fas fa-sync"></i>
+                            <span>刷新數據</span>
+                        </button>
+                        <a href="http://localhost:8089/api/docs" target="_blank" class="action-btn info">
+                            <i class="fas fa-book"></i>
+                            <span>API 文檔</span>
+                        </a>
+                        <button onclick="toggleChart()" class="action-btn gold" id="chart-toggle">
+                            <i class="fas fa-chart-line"></i>
+                            <span>顯示圖表</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- 頁腳 -->
+        <footer class="page-footer">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <h3>市場分析報告系統</h3>
+                    <p>AI 驅動的智能市場分析與報告生成平台</p>
+                </div>
+                <div class="footer-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">系統版本</span>
+                        <span class="stat-value">v2.0.0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">最後更新</span>
+                        <span class="stat-value" id="last-updated">--</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
     </div>
 
     <script src="/static/script.js"></script>
+    <script>
+        // 全域變數
+        let goldChart = null;
+        let chartVisible = false;
+        let goldPriceData = null;
+
+        // 載入黃金價格數據
+        async function loadGoldPrice() {
+            try {
+                updatePriceStatus('loading', '載入中...');
+
+                const response = await fetch('http://localhost:8089/api/gold-price');
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    goldPriceData = result.data;
+                    displayGoldPrice(result.data);
+                    updatePriceStatus('connected', '即時更新');
+                } else {
+                    throw new Error(result.message || '獲取數據失敗');
+                }
+            } catch (error) {
+                console.error('載入黃金價格失敗:', error);
+                displayPriceError('無法載入黃金價格: ' + error.message);
+                updatePriceStatus('error', '連接錯誤');
+            }
+        }
+
+        // 顯示黃金價格
+        function displayGoldPrice(data) {
+            const changeClass = data.change >= 0 ? 'positive' : 'negative';
+            const changeIcon = data.change >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+
+            document.getElementById('price-display').innerHTML = `
+                <div class="gold-price-info">
+                    <div class="price-main">
+                        <div class="current-price">
+                            <span class="price-value">$${data.current_price.toFixed(2)}</span>
+                            <span class="price-unit">USD/oz</span>
+                        </div>
+                        <div class="price-change ${changeClass}">
+                            <i class="fas ${changeIcon}"></i>
+                            <span>${data.change >= 0 ? '+' : ''}${data.change.toFixed(2)} (${data.change_percent.toFixed(2)}%)</span>
+                        </div>
+                    </div>
+
+                    <div class="price-details">
+                        <div class="detail-item">
+                            <span class="detail-label">
+                                <i class="fas fa-clock"></i>
+                                最後更新
+                            </span>
+                            <span class="detail-value">${formatDateTime(data.last_updated)}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">
+                                <i class="fas fa-signal"></i>
+                                市場狀態
+                            </span>
+                            <span class="detail-value market-${data.market_status}">
+                                ${data.market_status === 'open' ? '開市' : '休市'}
+                            </span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">
+                                <i class="fas fa-chart-line"></i>
+                                數據點數
+                            </span>
+                            <span class="detail-value">${data.chart_data.length} 小時</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 顯示價格錯誤
+        function displayPriceError(message) {
+            document.getElementById('price-display').innerHTML = `
+                <div class="error-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>價格載入失敗</h3>
+                    <p>${message}</p>
+                    <button onclick="loadGoldPrice()" class="retry-btn">
+                        <i class="fas fa-refresh"></i>
+                        重試
+                    </button>
+                </div>
+            `;
+        }
+
+        // 更新價格狀態
+        function updatePriceStatus(status, text) {
+            const dot = document.querySelector('#price-status .status-dot');
+            const textElement = document.querySelector('#price-status .status-text');
+
+            dot.classList.remove('connected', 'error', 'loading');
+            if (status !== 'loading') {
+                dot.classList.add(status);
+            }
+
+            textElement.textContent = text;
+        }
+
+        // 創建黃金價格圖表
+        function createGoldChart() {
+            if (!goldPriceData || !goldPriceData.chart_data) {
+                console.error('沒有圖表數據');
+                return;
+            }
+
+            const ctx = document.getElementById('goldChart').getContext('2d');
+
+            // 銷毀舊圖表
+            if (goldChart) {
+                goldChart.destroy();
+            }
+
+            const chartData = goldPriceData.chart_data;
+            const labels = chartData.map(d => {
+                const date = new Date(d.time);
+                return date.toLocaleDateString('zh-TW') + ' ' + date.toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'});
+            });
+            const prices = chartData.map(d => d.price);
+
+            goldChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '黃金價格 (USD/oz)',
+                        data: prices,
+                        borderColor: '#FFD700',
+                        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointHoverBackgroundColor: '#FFD700',
+                        pointHoverBorderColor: '#FFF',
+                        pointHoverBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: '#f8fafc',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                            titleColor: '#f8fafc',
+                            bodyColor: '#cbd5e1',
+                            borderColor: '#FFD700',
+                            borderWidth: 1,
+                            displayColors: false,
+                            callbacks: {
+                                title: function(context) {
+                                    return context[0].label;
+                                },
+                                label: function(context) {
+                                    return `價格: ${context.parsed.y.toFixed(2)} USD/oz`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            grid: {
+                                color: 'rgba(203, 213, 225, 0.1)'
+                            },
+                            ticks: {
+                                color: '#cbd5e1',
+                                maxTicksLimit: 8,
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        },
+                        y: {
+                            display: true,
+                            grid: {
+                                color: 'rgba(203, 213, 225, 0.1)'
+                            },
+                            ticks: {
+                                color: '#cbd5e1',
+                                callback: function(value) {
+                                    return '
+                     + value.toFixed(0);
+                                },
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 切換圖表顯示
+        function toggleChart() {
+            const chartContainer = document.getElementById('chart-container');
+            const toggleBtn = document.getElementById('chart-toggle');
+
+            if (chartVisible) {
+                chartContainer.style.display = 'none';
+                toggleBtn.innerHTML = '<i class="fas fa-chart-line"></i><span>顯示圖表</span>';
+                chartVisible = false;
+            } else {
+                if (goldPriceData) {
+                    chartContainer.style.display = 'block';
+                    toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i><span>隱藏圖表</span>';
+                    chartVisible = true;
+
+                    // 延遲創建圖表以確保容器可見
+                    setTimeout(() => {
+                        createGoldChart();
+                    }, 100);
+                } else {
+                    alert('請先載入黃金價格數據');
+                }
+            }
+        }
+
+        // 刷新所有數據
+        async function refreshData() {
+            const refreshBtn = document.querySelector('.action-btn.secondary');
+            const originalContent = refreshBtn.innerHTML;
+
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>刷新中...</span>';
+            refreshBtn.disabled = true;
+
+            try {
+                await Promise.all([
+                    loadGoldPrice(),
+                    loadMarketData()
+                ]);
+
+                // 如果圖表可見，重新創建
+                if (chartVisible && goldPriceData) {
+                    createGoldChart();
+                }
+
+            } catch (error) {
+                console.error('刷新數據失敗:', error);
+            } finally {
+                setTimeout(() => {
+                    refreshBtn.innerHTML = originalContent;
+                    refreshBtn.disabled = false;
+                }, 1000);
+            }
+        }
+
+        // 載入市場數據
+        async function loadMarketData() {
+            try {
+                updateMarketStatus('loading', '載入中...');
+
+                const response = await fetch('http://localhost:8089/api/current-data');
+                const result = await response.json();
+
+                if (result.data && Object.keys(result.data).length > 0) {
+                    displayMarketData(result.data);
+                    updateMarketStatus('connected', '已連接');
+                } else {
+                    displayNoMarketData();
+                    updateMarketStatus('waiting', '等待數據...');
+                }
+            } catch (error) {
+                console.error('載入市場數據失敗:', error);
+                displayMarketError('無法載入市場數據: ' + error.message);
+                updateMarketStatus('error', '連接錯誤');
+            }
+        }
+
+        // 顯示市場數據
+        function displayMarketData(data) {
+            const sentimentClass = getSentimentClass(data.average_sentiment_score);
+            const sentimentText = getSentimentText(data.average_sentiment_score);
+
+            document.getElementById('market-data-display').innerHTML = `
+                <div class="market-data">
+                    <div class="data-row">
+                        <div class="data-label">
+                            <i class="fas fa-chart-line"></i>
+                            情感分析分數
+                        </div>
+                        <div class="data-value">
+                            <span class="sentiment-score ${sentimentClass}">
+                                ${data.average_sentiment_score?.toFixed(3)} (${sentimentText})
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="data-row">
+                        <div class="data-label">
+                            <i class="fas fa-calendar-day"></i>
+                            市場日期
+                        </div>
+                        <div class="data-value">${data.market_date || '今日'}</div>
+                    </div>
+
+                    <div class="data-row">
+                        <div class="data-label">
+                            <i class="fas fa-clock"></i>
+                            接收時間
+                        </div>
+                        <div class="data-value">${data.received_time}</div>
+                    </div>
+
+                    <div class="data-row">
+                        <div class="data-label">
+                            <i class="fas fa-shield-alt"></i>
+                            風險評估
+                        </div>
+                        <div class="data-value">${data.risk_assessment || '未知'}</div>
+                    </div>
+
+                    <div class="data-row full-width">
+                        <div class="data-label">
+                            <i class="fas fa-newspaper"></i>
+                            市場分析內容
+                        </div>
+                        <div class="market-content">
+                            ${formatContent(data.message_content)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 顯示無市場數據
+        function displayNoMarketData() {
+            document.getElementById('market-data-display').innerHTML = `
+                <div class="no-data">
+                    <i class="fas fa-chart-bar"></i>
+                    <h3>等待市場數據</h3>
+                    <p>請確認 N8N 工作流程已正確運行並發送數據</p>
+                </div>
+            `;
+        }
+
+        // 顯示市場數據錯誤
+        function displayMarketError(message) {
+            document.getElementById('market-data-display').innerHTML = `
+                <div class="error-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>數據載入失敗</h3>
+                    <p>${message}</p>
+                    <button onclick="loadMarketData()" class="retry-btn">
+                        <i class="fas fa-refresh"></i>
+                        重試
+                    </button>
+                </div>
+            `;
+        }
+
+        // 更新市場數據狀態
+        function updateMarketStatus(status, text) {
+            const dot = document.querySelector('#status-indicator .indicator-dot');
+            const textElement = document.querySelector('#status-indicator .indicator-text');
+
+            dot.classList.remove('connected', 'error', 'loading');
+            if (status !== 'waiting') {
+                dot.classList.add(status);
+            }
+
+            textElement.textContent = text;
+        }
+
+        // 輔助函數
+        function getSentimentClass(score) {
+            if (score > 0.1) return 'sentiment-positive';
+            if (score < -0.1) return 'sentiment-negative';
+            return 'sentiment-neutral';
+        }
+
+        function getSentimentText(score) {
+            if (score > 0.6) return '極度樂觀';
+            if (score > 0.3) return '樂觀';
+            if (score > 0.1) return '略為樂觀';
+            if (score > -0.1) return '中性';
+            if (score > -0.3) return '略為悲觀';
+            if (score > -0.6) return '悲觀';
+            return '極度悲觀';
+        }
+
+        function formatContent(content) {
+            if (!content) return '無市場分析內容';
+
+            if (content.length > 300) {
+                const preview = content.substring(0, 300);
+                const remaining = content.substring(300);
+
+                return `
+                    <span class="content-preview">${preview}</span>
+                    <span class="content-full" style="display: none;">${remaining}</span>
+                    <button class="expand-btn" onclick="this.previousElementSibling.style.display='inline'; this.previousElementSibling.previousElementSibling.style.display='none'; this.style.display='none';">
+                        ...展開完整內容
+                    </button>
+                `;
+            }
+
+            return content;
+        }
+
+        function formatDateTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleDateString('zh-TW') + ' ' + date.toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'});
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 市場分析系統載入中...');
+
+            // 載入初始數據
+            loadGoldPrice();
+            loadMarketData();
+
+            // 設置自動刷新
+            setInterval(() => {
+                loadGoldPrice();
+                loadMarketData();
+            }, 60000); // 每分鐘刷新
+
+            // 更新最後更新時間
+            document.getElementById('last-updated').textContent = formatDateTime(new Date().toISOString());
+
+            console.log('✅ 系統初始化完成');
+        });
+
+        // 全域錯誤處理
+        window.addEventListener('error', (e) => {
+            console.error('全域錯誤:', e.error);
+        });
+    </script>
 </body>
 </html>
