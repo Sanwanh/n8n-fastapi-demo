@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-市場分析報告系統 - API服務
-Market Analysis Report System - API Service
+市場分析報告系統 - API服務 (優化版)
+Market Analysis Report System - Enhanced API Service
 """
 
 import os
 import sys
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Optional, Any
 import asyncio
@@ -17,13 +17,15 @@ import asyncio
 # 第三方套件
 try:
     from fastapi import FastAPI, Request, HTTPException
-    from fastapi.responses import JSONResponse
+    from fastapi.responses import JSONResponse, HTMLResponse
     from fastapi.staticfiles import StaticFiles
     from fastapi.middleware.cors import CORSMiddleware
     from pydantic import BaseModel, EmailStr, validator
     import uvicorn
     import requests
     import yfinance as yf
+    import pandas as pd
+    import numpy as np
 except ImportError as e:
     print(f"❌ 缺少必要的套件: {e}")
     print("請執行: pip install -r requirements.txt")
@@ -60,8 +62,8 @@ def load_config():
         },
         'SYSTEM_INFO': {
             'name': 'Market Analysis API',
-            'version': '2.0.0',
-            'description': '智能市場分析API服務'
+            'version': '2.1.0',
+            'description': '智能市場分析API服務 - 增強版'
         }
     }
 
@@ -102,8 +104,8 @@ app = FastAPI(
     title=CONFIG['SYSTEM_INFO']['name'],
     description=CONFIG['SYSTEM_INFO']['description'],
     version=CONFIG['SYSTEM_INFO']['version'],
-    docs_url="/docs",
-    redoc_url="/redoc"
+    docs_url="/api/docs",
+    redoc_url="/api/redoc"
 )
 
 # CORS 設定
@@ -119,7 +121,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 
 
-# Web 路由 - 整合到 API 服務中
+# Web 路由
 @app.get("/", response_class=HTMLResponse)
 async def home():
     """主頁面 - 顯示市場數據和黃金價格"""
@@ -178,6 +180,9 @@ async def receive_n8n_data(request: Request):
             "raw_data": market_data
         }
 
+        system_stats["total_reports"] += 1
+        system_stats["today_reports"] += 1
+
         logger.info(f"✅ 成功儲存 N8N 資料")
 
         return {
@@ -203,52 +208,165 @@ async def get_current_data():
 
 
 @app.get("/api/gold-price")
-async def get_gold_price():
-    """取得黃金期貨價格"""
+async def get_gold_price(period: str = "1d", interval: str = "1h"):
+    """取得黃金期貨價格 - 增強版支援多時間範圍"""
     try:
+        # 驗證參數
+        valid_periods = ["1d", "5d", "1mo", "3mo", "6mo", "1y"]
+        valid_intervals = ["1m", "5m", "15m", "30m", "1h", "1d"]
+
+        if period not in valid_periods:
+            period = "1d"
+        if interval not in valid_intervals:
+            interval = "1h"
+
+        logger.info(f"🔍 正在獲取黃金期貨數據 - 期間: {period}, 間隔: {interval}")
+
         # 使用 yfinance 獲取黃金期貨數據
         gold_ticker = yf.Ticker("GC=F")
 
-        # 獲取最新價格
-        info = gold_ticker.info
-        hist = gold_ticker.history(period="5d", interval="1h")
+        # 獲取歷史數據
+        hist = gold_ticker.history(period=period, interval=interval)
 
         if hist.empty:
+            logger.error("❌ yfinance 返回空數據")
             raise HTTPException(status_code=500, detail="無法獲取黃金價格數據")
 
-        current_price = hist['Close'].iloc[-1]
-        previous_close = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
+        logger.info(f"✅ 成功獲取 {len(hist)} 個數據點")
+
+        # 嘗試獲取即時數據
+        try:
+            recent_data = gold_ticker.history(period="2d", interval="1m")
+            if not recent_data.empty:
+                today = datetime.now().date()
+                today_data = recent_data[recent_data.index.date >= today]
+
+                if not today_data.empty:
+                    # 更新最新價格
+                    latest_price = float(today_data['Close'].iloc[-1])
+                    latest_time = today_data.index[-1]
+
+                    # 更新歷史數據中的最後一天
+                    if len(hist) > 0:
+                        last_date = hist.index[-1].date()
+                        if last_date == today:
+                            hist.iloc[-1, hist.columns.get_loc('Close')] = latest_price
+                            hist.iloc[-1, hist.columns.get_loc('High')] = max(hist.iloc[-1]['High'], latest_price)
+                            hist.iloc[-1, hist.columns.get_loc('Low')] = min(hist.iloc[-1]['Low'], latest_price)
+
+                    logger.info(f"📊 已更新即時價格: ${latest_price:.2f}")
+
+        except Exception as e:
+            logger.warning(f"⚠️ 無法獲取即時數據: {str(e)}")
+
+        # 計算價格變化
+        current_price = float(hist['Close'].iloc[-1])
+        previous_close = float(hist['Close'].iloc[-2]) if len(hist) > 1 else current_price
         change = current_price - previous_close
         change_percent = (change / previous_close) * 100 if previous_close != 0 else 0
 
-        # 準備圖表數據（最近5天的小時數據）
+        # 計算統計數據
+        high_24h = float(hist['High'].max())
+        low_24h = float(hist['Low'].min())
+        volume_24h = int(hist['Volume'].sum()) if hist['Volume'].sum() > 0 else 0
+
+        # 準備圖表數據
         chart_data = []
         for idx, row in hist.iterrows():
             chart_data.append({
                 "time": idx.isoformat(),
                 "price": float(row['Close']),
-                "volume": float(row['Volume']) if row['Volume'] > 0 else 0
+                "high": float(row['High']),
+                "low": float(row['Low']),
+                "open": float(row['Open']),
+                "volume": int(row['Volume']) if row['Volume'] > 0 else 0
             })
+
+        # 計算技術指標
+        ma_20_series = hist['Close'].rolling(window=min(20, len(hist))).mean()
+        ma_50_series = hist['Close'].rolling(window=min(50, len(hist))).mean()
+
+        technical_indicators = {
+            "ma_20": float(ma_20_series.iloc[-1]) if not ma_20_series.empty and not pd.isna(
+                ma_20_series.iloc[-1]) else None,
+            "ma_50": float(ma_50_series.iloc[-1]) if not ma_50_series.empty and not pd.isna(
+                ma_50_series.iloc[-1]) else None,
+            "rsi": calculate_rsi(hist['Close'].values) if len(hist) >= 14 else None
+        }
+
+        # 判斷市場狀態
+        current_hour = datetime.now().hour
+        market_status = "open" if 18 <= current_hour or current_hour <= 17 else "closed"
+
+        # 獲取市場資訊
+        try:
+            info = gold_ticker.info
+            market_name = info.get('longName', 'Gold Futures')
+        except:
+            market_name = 'Gold Futures'
+
+        logger.info(f"💰 黃金價格: ${current_price:.2f} (變化: {change:+.2f}, {change_percent:+.2f}%)")
 
         return {
             "status": "success",
             "data": {
                 "symbol": "GC=F",
-                "name": "Gold Futures",
-                "current_price": float(current_price),
-                "change": float(change),
-                "change_percent": float(change_percent),
+                "name": market_name,
+                "current_price": current_price,
+                "change": change,
+                "change_percent": change_percent,
+                "high_24h": high_24h,
+                "low_24h": low_24h,
+                "volume_24h": volume_24h,
                 "currency": "USD",
                 "unit": "per ounce",
                 "last_updated": datetime.now().isoformat(),
-                "chart_data": chart_data[-48:],  # 最近48小時數據
-                "market_status": "open" if hist.index[-1].hour >= 18 or hist.index[-1].hour <= 17 else "closed"
-            }
+                "chart_data": chart_data,
+                "market_status": market_status,
+                "technical_indicators": technical_indicators,
+                "period": period,
+                "interval": interval,
+                "data_points": len(chart_data)
+            },
+            "system_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "next_update": (datetime.now() + timedelta(minutes=1)).strftime("%Y-%m-%d %H:%M:%S"),
+            "data_source": "Yahoo Finance API"
         }
 
     except Exception as e:
         logger.error(f"❌ 獲取黃金價格失敗: {str(e)}")
         raise HTTPException(status_code=500, detail=f"獲取黃金價格失敗: {str(e)}")
+
+
+def calculate_rsi(prices, periods=14):
+    """計算 RSI 技術指標"""
+    try:
+        if len(prices) < periods + 1:
+            return None
+
+        # 轉換為 numpy 數組並確保是浮點數
+        prices = np.array(prices, dtype=float)
+        deltas = np.diff(prices)
+
+        if len(deltas) < periods:
+            return None
+
+        up_moves = np.where(deltas > 0, deltas, 0)
+        down_moves = np.where(deltas < 0, -deltas, 0)
+
+        # 計算初始平均值
+        avg_up = np.mean(up_moves[:periods])
+        avg_down = np.mean(down_moves[:periods])
+
+        if avg_down == 0:
+            return 100
+
+        rs = avg_up / avg_down
+        rsi = 100 - (100 / (1 + rs))
+        return round(float(rsi), 2)
+    except Exception as e:
+        logger.warning(f"RSI 計算錯誤: {e}")
+        return None
 
 
 @app.post("/api/send-mail-to-n8n")
@@ -260,10 +378,7 @@ async def send_mail_to_n8n(mail_data: MailSenderRequest):
 
         # 構建發送到 N8N 的數據結構
         send_data = {
-            # 原始市場數據
             **stored_data,
-
-            # 郵件配置
             "mail_config": {
                 "recipient_email": str(mail_data.recipient_email),
                 "sender_name": mail_data.sender_name,
@@ -275,15 +390,11 @@ async def send_mail_to_n8n(mail_data: MailSenderRequest):
                 "include_recommendations": mail_data.include_recommendations,
                 "include_risk_warning": mail_data.include_risk_warning
             },
-
-            # 系統信息
             "system_info": {
                 "send_timestamp": datetime.now().isoformat(),
                 "system_version": CONFIG['SYSTEM_INFO']['version'],
                 "source": "mail-sender-page"
             },
-
-            # 情感分析信息
             "sentiment_analysis": {
                 "score": stored_data.get("average_sentiment_score", 0),
                 "text": get_sentiment_text(stored_data.get("average_sentiment_score", 0)),
@@ -291,7 +402,6 @@ async def send_mail_to_n8n(mail_data: MailSenderRequest):
             }
         }
 
-        # 發送到 N8N webhook
         response = requests.post(
             CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url'],
             json=send_data,
@@ -353,7 +463,13 @@ async def health_check():
         "version": CONFIG['SYSTEM_INFO']['version'],
         "has_data": len(stored_data) > 0,
         "uptime": str(uptime).split('.')[0],
-        "environment": os.getenv('ENVIRONMENT', 'development')
+        "environment": os.getenv('ENVIRONMENT', 'development'),
+        "features": {
+            "gold_price_api": True,
+            "market_analysis": True,
+            "mail_sender": True,
+            "real_time_updates": True
+        }
     }
 
 
@@ -397,7 +513,7 @@ def get_market_emoji(score: float) -> str:
 # 啟動事件
 @app.on_event("startup")
 async def startup_event():
-    logger.info("🚀 市場分析系統啟動")
+    logger.info("🚀 市場分析系統啟動 - 增強版")
     logger.info(f"📡 N8N Webhook: {CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url']}")
     logger.info(f"🌐 主網站: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}")
     logger.info(f"📧 郵件頁面: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}/mail")
@@ -418,7 +534,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 
 def main():
-    print("🚀 啟動市場分析系統...")
+    print("🚀 啟動市場分析系統 - 增強版...")
     print(f"🌐 主網站: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}")
     print(f"📧 郵件頁面: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}/mail")
     print(f"📖 API文檔: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}/api/docs")
