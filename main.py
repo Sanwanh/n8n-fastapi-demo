@@ -177,7 +177,7 @@ async def receive_n8n_data(request: Request):
         # 增強的數據處理邏輯
         if isinstance(raw_data, list) and len(raw_data) > 0:
             market_data = raw_data[0]
-            logger.info("✅ 處理陣列格式數據，取第一個元素")
+            # logger.info("✅ 處理陣列格式數據，取第一個元素")
         elif isinstance(raw_data, dict):
             market_data = raw_data
             logger.info("✅ 處理字典格式數據")
@@ -186,7 +186,7 @@ async def receive_n8n_data(request: Request):
             raise HTTPException(status_code=400, detail=f"無效的資料格式: {type(raw_data)}")
 
         # 詳細記錄接收到的數據欄位
-        logger.info(f"📊 數據欄位: {list(market_data.keys())}")
+        # logger.info(f"📊 數據欄位: {list(market_data.keys())}")
 
         # 構建儲存的數據
         current_time = datetime.now()
@@ -244,14 +244,14 @@ async def get_current_data():
     try:
         system_stats["api_calls"] += 1
 
-        logger.info(f"📤 API 請求 /api/current-data")
-        logger.info(f"📊 當前儲存數據狀態: {'有數據' if stored_data else '無數據'}")
+        # logger.info(f"📤 API 請求 /api/current-data")
+        # logger.info(f"📊 當前儲存數據狀態: {'有數據' if stored_data else '無數據'}")
 
-        if stored_data:
-            logger.info(f"📊 數據詳情:")
-            logger.info(f"   情感分數: {stored_data.get('average_sentiment_score', 'N/A')}")
-            logger.info(f"   內容長度: {len(stored_data.get('message_content', ''))} 字元")
-            logger.info(f"   接收時間: {stored_data.get('received_time', 'N/A')}")
+        # if stored_data:
+            # logger.info(f"📊 數據詳情:")
+            # logger.info(f"   情感分數: {stored_data.get('average_sentiment_score', 'N/A')}")
+            # logger.info(f"   內容長度: {len(stored_data.get('message_content', ''))} 字元")
+            # logger.info(f"   接收時間: {stored_data.get('received_time', 'N/A')}")
 
         # 檢查數據是否過期（超過1小時）
         data_age_minutes = 0
@@ -259,7 +259,7 @@ async def get_current_data():
             try:
                 received_time = datetime.fromisoformat(stored_data['received_timestamp'])
                 data_age_minutes = (datetime.now() - received_time).total_seconds() / 60
-                logger.info(f"📅 數據年齡: {data_age_minutes:.1f} 分鐘")
+                # logger.info(f"📅 數據年齡: {data_age_minutes:.1f} 分鐘")
             except Exception as e:
                 logger.warning(f"⚠️ 無法計算數據年齡: {e}")
 
@@ -273,7 +273,7 @@ async def get_current_data():
             "data_freshness": "fresh" if data_age_minutes < 60 else "stale" if data_age_minutes < 1440 else "very_old"
         }
 
-        logger.info(f"✅ 回傳數據: {len(stored_data)} 個欄位")
+        # logger.info(f"✅ 回傳數據: {len(stored_data)} 個欄位")
         return response_data
 
     except Exception as e:
@@ -371,9 +371,9 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
         if chart_data:
             prices = [d['price'] for d in chart_data]
             valid_prices = [p for p in prices if not pd.isna(p) and p > 0]
-            logger.info(f"   有效價格數量: {len(valid_prices)}")
-            if valid_prices:
-                logger.info(f"   價格範圍: ${min(valid_prices):.2f} - ${max(valid_prices):.2f}")
+            # logger.info(f"   有效價格數量: {len(valid_prices)}")
+            # if valid_prices:
+            #     logger.info(f"   價格範圍: ${min(valid_prices):.2f} - ${max(valid_prices):.2f}")
             # logger.info(f"   前3個數據點: {chart_data[:3]}")
 
         # 計算技術指標
@@ -471,7 +471,7 @@ async def get_gold_futures_data_enhanced(period: str, interval: str):
 
         # 嘗試獲取當天的分鐘級數據
         try:
-            logger.info("🔄 正在獲取當天詳細數據...")
+            # logger.info("🔄 正在獲取當天詳細數據...")
             recent_data = gold_ticker.history(
                 period='2d',
                 interval='1m'
@@ -543,16 +543,16 @@ async def get_gold_futures_data_enhanced(period: str, interval: str):
         info = None
         try:
             info = gold_ticker.info
-            logger.info(f"📋 獲取市場資訊: {info.get('longName', 'N/A') if info else 'N/A'}")
+            # logger.info(f"📋 獲取市場資訊: {info.get('longName', 'N/A') if info else 'N/A'}")
         except Exception as info_error:
             logger.warning(f"⚠️ 無法獲取市場資訊: {info_error}")
 
         current_price = hist_data['Close'].iloc[-1] if not hist_data.empty else None
 
-        logger.info(f"✅ 數據獲取完成:")
-        logger.info(f"   最終數據點數: {len(hist_data)}")
-        logger.info(f"   最新價格: ${current_price:.2f}")
-        logger.info(f"   最後更新: {hist_data.index[-1].strftime('%Y-%m-%d %H:%M')}")
+        # logger.info(f"✅ 數據獲取完成:")
+        # logger.info(f"   最終數據點數: {len(hist_data)}")
+        # logger.info(f"   最新價格: ${current_price:.2f}")
+        # logger.info(f"   最後更新: {hist_data.index[-1].strftime('%Y-%m-%d %H:%M')}")
 
         # 獲取最新的處理時間
         latest_processing_time = None
@@ -599,7 +599,7 @@ def calculate_gold_statistics(data):
             'latest_date': close_prices.index[-1]
         }
 
-        logger.info(f"📊 統計計算完成: 當前=${stats['current_price']:.2f}, 變化={stats['price_change']:+.2f}")
+        # logger.info(f"📊 統計計算完成: 當前=${stats['current_price']:.2f}, 變化={stats['price_change']:+.2f}")
         return stats
     except Exception as e:
         logger.error(f"❌ 統計計算失敗: {e}")
@@ -636,7 +636,7 @@ def calculate_technical_indicators_enhanced(hist_data):
             technical_indicators["price_vs_ma20"] = float(
                 (close_prices.iloc[-1] / technical_indicators["ma_20"] - 1) * 100)
 
-        logger.info(f"📈 技術指標計算完成: {len(technical_indicators)} 個指標")
+        # logger.info(f"📈 技術指標計算完成: {len(technical_indicators)} 個指標")
 
     except Exception as e:
         logger.warning(f"⚠️ 技術指標計算錯誤: {e}")
