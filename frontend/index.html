@@ -110,6 +110,10 @@
                         <h3><i class="fas fa-chart-line"></i> 技術指標</h3>
                         <div class="indicators-grid">
                             <div class="indicator-item">
+                                <span class="indicator-label">MA5</span>
+                                <span class="indicator-value" id="ma5-value">--</span>
+                            </div>
+                            <div class="indicator-item">
                                 <span class="indicator-label">MA20</span>
                                 <span class="indicator-value" id="ma20-value">--</span>
                             </div>
@@ -128,12 +132,24 @@
                         <div class="chart-header">
                             <h3><i class="fas fa-chart-area"></i> 價格走勢圖</h3>
                             <div class="chart-controls">
-                                <button class="chart-control-btn active" data-type="line">
-                                    <i class="fas fa-chart-line"></i> 線圖
-                                </button>
-                                <button class="chart-control-btn" data-type="candle">
-                                    <i class="fas fa-chart-bar"></i> K線
-                                </button>
+                                <div class="line-controls">
+                                    <label class="line-toggle">
+                                        <input type="checkbox" id="show-ma5" checked>
+                                        <span class="toggle-label">MA5</span>
+                                    </label>
+                                    <label class="line-toggle">
+                                        <input type="checkbox" id="show-ma20" checked>
+                                        <span class="toggle-label">MA20</span>
+                                    </label>
+                                    <label class="line-toggle">
+                                        <input type="checkbox" id="show-monthly" checked>
+                                        <span class="toggle-label">月平均</span>
+                                    </label>
+                                    <label class="line-toggle">
+                                        <input type="checkbox" id="show-yearly" checked>
+                                        <span class="toggle-label">年平均</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                         <div class="chart-container" id="chart-container">
@@ -223,15 +239,26 @@
         let goldChart = null;
         let goldPriceData = null;
         let marketData = null;
-        let chartType = 'line';
         let currentPeriod = '1y'; // 固定為一年
         let autoRefreshInterval = null;
         let indicatorsVisible = false;
         let detailsVisible = false;
+        let showMA5 = true;
+        let showMA20 = true;
+        let showMonthly = true;
+        let showYearly = true;
 
         // ===== 初始化 =====
         document.addEventListener('DOMContentLoaded', function () {
             console.log('🚀 市場分析系統載入中...');
+
+            // 檢查Chart.js是否載入
+            if (typeof Chart === 'undefined') {
+                console.error('❌ Chart.js 未載入，請檢查網路連接');
+            } else {
+                console.log('✅ Chart.js 已載入');
+                console.log('Chart.js 版本:', Chart.version);
+            }
 
             // 開始載入數據
             initializeSystem();
@@ -245,6 +272,15 @@
 
             // 設定自動刷新（每5分鐘）
             autoRefreshInterval = setInterval(refreshAllData, 60000);
+
+            // 監聽視窗大小改變
+            window.addEventListener('resize', () => {
+                if (goldChart && goldPriceData) {
+                    setTimeout(() => {
+                        createGoldChart(goldPriceData);
+                    }, 100);
+                }
+            });
 
             console.log('✅ 系統初始化完成');
         });
@@ -264,23 +300,17 @@
 
         // ===== 事件監聽設定 =====
         function setupEventListeners() {
-            // 圖表類型切換
-            const chartButtons = document.querySelectorAll('.chart-control-btn');
-            chartButtons.forEach(btn => {
-                btn.addEventListener('click', function () {
-                    chartButtons.forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    chartType = this.dataset.type;
-                    console.log(`📈 切換圖表類型到: ${chartType}`);
+            // 線條顯示控制
+            const lineToggles = document.querySelectorAll('.line-toggle input');
+            lineToggles.forEach(toggle => {
+                toggle.addEventListener('change', function () {
+                    const lineType = this.id.replace('show-', '');
+                    console.log(`📈 切換線條顯示: ${lineType} = ${this.checked}`);
 
-                    // 暫時只支援線圖
-                    if (chartType === 'candle') {
-                        console.log('⚠️ K線圖功能暫時停用，使用線圖');
-                        chartType = 'line';
-                        // 更新按鈕狀態
-                        document.querySelector('[data-type="line"]').classList.add('active');
-                        document.querySelector('[data-type="candle"]').classList.remove('active');
-                    }
+                    if (lineType === 'ma5') showMA5 = this.checked;
+                    if (lineType === 'ma20') showMA20 = this.checked;
+                    if (lineType === 'monthly') showMonthly = this.checked;
+                    if (lineType === 'yearly') showYearly = this.checked;
 
                     if (goldPriceData) {
                         createGoldChart(goldPriceData);
@@ -357,7 +387,39 @@
 
                     displayGoldPrice(result.data);
                     updateTechnicalIndicators(result.data.technical_indicators || {});
-                    createGoldChart(result.data);
+
+                    // 檢查圖表數據
+                    console.log('📊 準備創建圖表，數據檢查:');
+                    console.log('chart_data 存在:', !!result.data.chart_data);
+                    console.log('chart_data 類型:', typeof result.data.chart_data);
+                    console.log('chart_data 長度:', result.data.chart_data?.length);
+                    if (result.data.chart_data && result.data.chart_data.length > 0) {
+                        console.log('第一個數據點:', result.data.chart_data[0]);
+                    }
+
+                    // 檢查MA線數據
+                    console.log('MA5 數據存在:', !!result.data.ma_lines?.ma_5);
+                    console.log('MA20 數據存在:', !!result.data.ma_lines?.ma_20);
+                    console.log('月平均線數據存在:', !!result.data.monthly_average_line);
+                    console.log('年平均價格線數據存在:', !!result.data.yearly_average_line);
+                    if (result.data.ma_lines?.ma_5) {
+                        console.log('MA5 數據點數:', result.data.ma_lines.ma_5.length);
+                    }
+                    if (result.data.ma_lines?.ma_20) {
+                        console.log('MA20 數據點數:', result.data.ma_lines.ma_20.length);
+                    }
+                    if (result.data.monthly_average_line) {
+                        console.log('月平均線數據點數:', result.data.monthly_average_line.length);
+                    }
+                    if (result.data.yearly_average_line) {
+                        console.log('年平均價格線數據點數:', result.data.yearly_average_line.length);
+                    }
+
+                    // 延遲創建圖表，確保DOM完全載入
+                    setTimeout(() => {
+                        createGoldChart(result.data);
+                    }, 500);
+
                     updatePriceStatus('connected', '即時更新');
 
                     if (result.next_update) {
@@ -530,7 +592,7 @@
         // ===== 創建黃金價格圖表 =====
         function createGoldChart(data) {
             console.log('🎨 開始創建黃金價格圖表...');
-            console.log('當前圖表類型:', chartType);
+            console.log('接收到的數據:', data);
 
             const canvas = document.getElementById('goldChart');
             const container = document.getElementById('chart-container');
@@ -545,6 +607,16 @@
                 return;
             }
 
+            // 檢查容器是否可見
+            const containerStyle = window.getComputedStyle(container);
+            console.log('容器顯示狀態:', containerStyle.display);
+            console.log('容器可見性:', containerStyle.visibility);
+
+            // 確保容器可見
+            if (containerStyle.display === 'none') {
+                container.style.display = 'block';
+            }
+
             // 重要：正確銷毀現有圖表
             if (goldChart) {
                 console.log('🗑️ 銷毀現有圖表');
@@ -553,9 +625,12 @@
             }
 
             // 重新設置 Canvas 尺寸
-            canvas.width = container.offsetWidth;
-            canvas.height = container.offsetHeight;
+            canvas.width = container.offsetWidth || 800;
+            canvas.height = container.offsetHeight || 400;
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
             console.log('Canvas 尺寸:', canvas.width, 'x', canvas.height);
+            console.log('容器尺寸:', container.offsetWidth, 'x', container.offsetHeight);
 
             if (!data.chart_data || !Array.isArray(data.chart_data) || data.chart_data.length === 0) {
                 console.warn('⚠️ 圖表數據為空或無效，不渲染圖表');
@@ -569,76 +644,256 @@
             console.log('原始數據樣本:', data.chart_data.slice(0, 3));
 
             const chartData = data.chart_data;
-            const labels = chartData.map(d => {
-                let date;
-                if (typeof d.time === 'string') {
-                    date = new Date(d.time);
-                } else if (d.time instanceof Date) {
-                    date = d.time;
-                } else {
-                    console.warn('無效的時間格式:', d.time);
-                    date = new Date();
-                }
-                // 確保日期有效
-                if (isNaN(date.getTime())) {
-                    console.warn('無效的日期:', d.time);
-                    date = new Date();
-                }
-                return date;
-            });
 
-            // 2. 把 prices 也簡化
-            const prices = chartData.map(d => {
-                const p = parseFloat(d.price);
-                return isNaN(p) ? 0 : p;
-            });
+            // 簡化數據處理，使用字符串日期
+            const labels = chartData.map(d => d.time);
+            const prices = chartData.map(d => parseFloat(d.price) || 0);
 
-            console.log('📈 處理後的數據:');
-            console.log('標籤數量:', labels.length);
-            console.log('價格數量:', prices.length);
-            console.log(`價格範圍: $${Math.min(...prices).toFixed(2)} - $${Math.max(...prices).toFixed(2)}`);
-            console.log('前5個時間標籤:', labels.slice(0, 5).map(d => d.toISOString()));
-            console.log('前5個價格:', prices.slice(0, 5));
-            console.log('前5個日期顯示:', labels.slice(0, 5).map(d => {
-                const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-                const year = d.getFullYear();
-                return `${month} ${year}`;
+            console.log('處理後的標籤:', labels.slice(0, 5));
+            console.log('處理後的價格:', prices.slice(0, 5));
+            console.log('標籤總數:', labels.length);
+            console.log('價格總數:', prices.length);
+            console.log('有效價格數量:', prices.filter(p => p > 0).length);
+
+            // 準備數據集 - 使用簡單的數組格式
+            const validPrices = prices.filter(p => p > 0);
+            const validLabels = labels.slice(0, validPrices.length);
+
+            console.log('有效價格數量:', validPrices.length);
+            console.log('有效標籤數量:', validLabels.length);
+            console.log('有效標籤樣本:', validLabels.slice(0, 5));
+            console.log('主數據時間格式樣本:', validLabels.slice(0, 3).map(label => {
+                const date = new Date(label);
+                return {
+                    original: label,
+                    date: date.toISOString().split('T')[0]
+                };
             }));
 
-            // 檢查數據是否有效
-            const validData = labels.map((label, index) => ({
-                x: label,
-                y: prices[index]
-            })).filter(item => !isNaN(item.y) && item.y > 0);
+            const datasets = [{
+                label: '黃金價格 (USD/oz)',
+                data: validPrices,
+                borderColor: '#FFD700',
+                backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                spanGaps: true
+            }];
 
-            console.log('有效數據點:', validData.length);
-            console.log('數據樣本:', validData.slice(0, 3));
+            console.log('主數據格式檢查:', {
+                validPricesLength: validPrices.length,
+                validPricesSample: validPrices.slice(0, 3),
+                validLabelsLength: validLabels.length,
+                validLabelsSample: validLabels.slice(0, 3)
+            });
 
-            // 檢查價格數據
-            const validPrices = prices.filter(p => !isNaN(p) && p > 0);
-            console.log('有效價格數量:', validPrices.length);
-            console.log('價格範圍:', Math.min(...validPrices), '-', Math.max(...validPrices));
+            // 添加MA5線
+            if (showMA5 && data.ma_lines && data.ma_lines.ma_5) {
+                console.log('🔍 處理MA5數據...');
+                // 創建MA5數據映射
+                const ma5Map = {};
+                data.ma_lines.ma_5.forEach(d => {
+                    ma5Map[d.time] = parseFloat(d.price) || 0;
+                });
+
+                console.log('MA5映射樣本:', Object.keys(ma5Map).slice(0, 5));
+
+                // 對齊到主數據的時間軸
+                const ma5Prices = validLabels.map(label => ma5Map[label] || null);
+                const validMa5Prices = ma5Prices.filter(p => p !== null && p > 0);
+
+                // 確保數據長度與主數據一致
+                const alignedMa5Prices = validLabels.map(label => ma5Map[label] || null);
+
+                console.log('MA5對齊數據點數:', alignedMa5Prices.filter(p => p !== null).length);
+
+                if (alignedMa5Prices.filter(p => p !== null).length > 0) {
+                    datasets.push({
+                        label: 'MA5',
+                        data: alignedMa5Prices,
+                        borderColor: '#FF6B6B',
+                        backgroundColor: 'transparent',
+                        borderWidth: 1.5,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        spanGaps: true
+                    });
+                }
+            }
+
+            // 添加MA20線
+            if (showMA20 && data.ma_lines && data.ma_lines.ma_20) {
+                console.log('🔍 處理MA20數據...');
+                // 創建MA20數據映射
+                const ma20Map = {};
+                data.ma_lines.ma_20.forEach(d => {
+                    ma20Map[d.time] = parseFloat(d.price) || 0;
+                });
+
+                console.log('MA20映射樣本:', Object.keys(ma20Map).slice(0, 5));
+
+                // 對齊到主數據的時間軸
+                const ma20Prices = validLabels.map(label => ma20Map[label] || null);
+                const validMa20Prices = ma20Prices.filter(p => p !== null && p > 0);
+
+                // 確保數據長度與主數據一致
+                const alignedMa20Prices = validLabels.map(label => ma20Map[label] || null);
+
+                console.log('MA20對齊數據點數:', alignedMa20Prices.filter(p => p !== null).length);
+
+                if (alignedMa20Prices.filter(p => p !== null).length > 0) {
+                    datasets.push({
+                        label: 'MA20',
+                        data: alignedMa20Prices,
+                        borderColor: '#4ECDC4',
+                        backgroundColor: 'transparent',
+                        borderWidth: 1.5,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        spanGaps: true
+                    });
+                }
+            }
+
+            // 添加每月平均線
+            if (showMonthly && data.monthly_average_line && data.monthly_average_line.length > 0) {
+                console.log('🔍 處理月平均線數據...');
+                console.log('月平均線原始數據:', data.monthly_average_line);
+
+                // 創建月平均線數據映射
+                const monthlyMap = {};
+                data.monthly_average_line.forEach(d => {
+                    monthlyMap[d.time] = parseFloat(d.price) || 0;
+                });
+
+                console.log('月平均線映射樣本:', Object.keys(monthlyMap).slice(0, 5));
+                console.log('月平均線映射值樣本:', Object.values(monthlyMap).slice(0, 5));
+
+                // 對齊到主數據的時間軸 - 修正對齊邏輯
+                const alignedMonthlyPrices = validLabels.map(label => {
+                    // 直接使用日期字符串進行匹配
+                    return monthlyMap[label] || null;
+                });
+
+                console.log('月平均線對齊數據點數:', alignedMonthlyPrices.filter(p => p !== null).length);
+                console.log('月平均線對齊數據樣本:', alignedMonthlyPrices.slice(0, 10));
+                console.log('月平均線數據類型檢查:', {
+                    total: alignedMonthlyPrices.length,
+                    valid: alignedMonthlyPrices.filter(p => p !== null).length,
+                    null: alignedMonthlyPrices.filter(p => p === null).length,
+                    zero: alignedMonthlyPrices.filter(p => p === 0).length,
+                    positive: alignedMonthlyPrices.filter(p => p > 0).length
+                });
+
+                if (alignedMonthlyPrices.filter(p => p !== null).length > 0) {
+                    // 創建月平均線數據集，使用與主數據相同的格式
+                    datasets.push({
+                        label: '月平均線',
+                        data: alignedMonthlyPrices,
+                        borderColor: '#8B5CF6',
+                        backgroundColor: 'transparent',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 8,
+                        pointBackgroundColor: '#8B5CF6',
+                        pointBorderColor: '#FFFFFF',
+                        pointBorderWidth: 2,
+                        borderDash: [8, 4],
+                        spanGaps: true
+                    });
+                } else {
+                    console.log('⚠️ 月平均線沒有有效數據點');
+                }
+            } else {
+                console.log('⚠️ 月平均線數據不存在或為空');
+                console.log('showMonthly:', showMonthly);
+                console.log('data.monthly_average_line 存在:', !!data.monthly_average_line);
+                console.log('data.monthly_average_line 長度:', data.monthly_average_line?.length);
+            }
+
+            // 添加年平均價格線
+            if (showYearly && data.yearly_average_line && data.yearly_average_line.length > 0) {
+                console.log('🔍 處理年平均價格線數據...');
+                console.log('年平均價格線原始數據:', data.yearly_average_line);
+
+                // 創建年平均價格線數據映射
+                const yearlyMap = {};
+                data.yearly_average_line.forEach(d => {
+                    yearlyMap[d.time] = parseFloat(d.price) || 0;
+                });
+
+                console.log('年平均價格線映射樣本:', Object.keys(yearlyMap).slice(0, 5));
+                console.log('年平均價格線映射值樣本:', Object.values(yearlyMap).slice(0, 5));
+
+                // 對齊到主數據的時間軸 - 修正對齊邏輯
+                const alignedYearlyPrices = validLabels.map(label => {
+                    // 直接使用日期字符串進行匹配
+                    return yearlyMap[label] || null;
+                });
+
+                console.log('年平均價格線對齊數據點數:', alignedYearlyPrices.filter(p => p !== null).length);
+                console.log('年平均價格線對齊數據樣本:', alignedYearlyPrices.slice(0, 10));
+                console.log('年平均價格線數據類型檢查:', {
+                    total: alignedYearlyPrices.length,
+                    valid: alignedYearlyPrices.filter(p => p !== null).length,
+                    null: alignedYearlyPrices.filter(p => p === null).length,
+                    zero: alignedYearlyPrices.filter(p => p === 0).length,
+                    positive: alignedYearlyPrices.filter(p => p > 0).length
+                });
+
+                if (alignedYearlyPrices.filter(p => p !== null).length > 0) {
+                    // 創建年平均價格線數據集，使用與主數據相同的格式
+                    datasets.push({
+                        label: '年平均價格',
+                        data: alignedYearlyPrices,
+                        borderColor: '#FF8C00',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        borderDash: [10, 5],
+                        spanGaps: true
+                    });
+                } else {
+                    console.log('⚠️ 年平均價格線沒有有效數據點');
+                }
+            } else {
+                console.log('⚠️ 年平均價格線數據不存在或為空');
+                console.log('showYearly:', showYearly);
+                console.log('data.yearly_average_line 存在:', !!data.yearly_average_line);
+                console.log('data.yearly_average_line 長度:', data.yearly_average_line?.length);
+            }
 
             const config = {
                 type: 'line',
                 data: {
-                    labels: labels,
-                    datasets: [{
-                        label: '黃金價格 (USD/oz)',
-                        data: prices,
-                        borderColor: '#FFD700',
-                        backgroundColor: 'rgba(255, 215, 0, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHoverRadius: 6
-                    }]
+                    labels: validLabels,
+                    datasets: datasets
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: { intersect: false, mode: 'index' },
+                    layout: {
+                        padding: {
+                            bottom: 20   // 整張圖底部多留 20px
+                        }
+                    },
+                    elements: {
+                        point: {
+                            radius: 0
+                        }
+                    },
                     plugins: {
                         title: {
                             display: true,
@@ -657,34 +912,14 @@
                             borderWidth: 1,
                             callbacks: {
                                 title: function (context) {
-                                    // 使用實際的數據日期
                                     const dataIndex = context[0].dataIndex;
                                     if (dataIndex < labels.length) {
-                                        const date = labels[dataIndex];
-                                        if (date && !isNaN(date.getTime())) {
-                                            return date.toLocaleDateString('zh-TW', {
-                                                year: 'numeric',
-                                                month: 'long',
-                                                day: 'numeric'
-                                            });
-                                        }
+                                        return labels[dataIndex];
                                     }
                                     return '未知日期';
                                 },
                                 label: function (context) {
-                                    return `價格: $${context.parsed.y.toFixed(2)}`;
-                                },
-                                afterLabel: function (context) {
-                                    const dataPoint = chartData[context.dataIndex];
-                                    if (dataPoint) {
-                                        return [
-                                            `開盤: $${dataPoint.open?.toFixed(2) || 'N/A'}`,
-                                            `最高: $${dataPoint.high?.toFixed(2) || 'N/A'}`,
-                                            `最低: $${dataPoint.low?.toFixed(2) || 'N/A'}`,
-                                            `交易量: ${dataPoint.volume?.toLocaleString() || 'N/A'}`
-                                        ];
-                                    }
-                                    return [];
+                                    return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
                                 }
                             }
                         }
@@ -692,19 +927,22 @@
                     scales: {
                         x: {
                             ticks: {
-                                autoSkip: true,
-                                maxTicksLimit: 8,
-                                minRotation: 0,
-                                maxRotation: 0,
                                 color: '#64748b',
+                                rotation: 0,  // 旋轉角度
+                                minRotation: 0,  // 最小旋轉角度
+                                maxRotation: 0,  // 最大旋轉角度
+                                autoSkip: true,
+                                font: {
+                                    size: 12,
+                                    weight: 'normal'
+                                },
                                 callback: function (value, index, ticks) {
-                                    // 使用標籤數組中的實際日期
-                                    if (index < labels.length) {
-                                        const date = labels[index];
-                                        if (date && !isNaN(date.getTime())) {
-                                            const month = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+                                    if (index < validLabels.length) {
+                                        const date = new Date(validLabels[index]);
+                                        if (!isNaN(date.getTime())) {
                                             const year = date.getFullYear();
-                                            return `${month} ${year}`;
+                                            const month = date.getMonth() + 1;
+                                            return `${year}年${month}月`;
                                         }
                                     }
                                     return '';
@@ -712,6 +950,10 @@
                             },
                             grid: {
                                 color: 'rgba(100, 116, 139, 0.1)'
+                            },
+                            afterFit: function (scale) {
+                                scale.paddingTop = 10;
+                                scale.paddingBottom = 10;
                             }
                         },
                         y: {
@@ -723,6 +965,24 @@
                             },
                             grid: { color: 'rgba(100, 116, 139, 0.1)' }
                         }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    layout: {
+                        padding: {
+                            top: 20,
+                            bottom: 60
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#cbd5e1' }
+                        }
+                    },
+                    animation: {
+                        duration: 1000
                     }
                 }
             };
@@ -730,10 +990,9 @@
             try {
                 const ctx = canvas.getContext('2d');
                 console.log('🎨 開始渲染圖表...');
-                console.log('圖表類型:', chartType);
                 console.log('Canvas 尺寸:', canvas.width, 'x', canvas.height);
-                console.log('數據點數量:', prices.length);
-                console.log('標籤數量:', labels.length);
+                console.log('數據集數量:', datasets.length);
+                console.log('有效價格數據點數:', validPrices.length);
 
                 // 確保 Chart.js 已載入
                 if (typeof Chart === 'undefined') {
@@ -742,21 +1001,27 @@
                 }
 
                 // 檢查數據是否有效
-                if (prices.length === 0 || labels.length === 0) {
-                    console.error('❌ 數據為空，無法創建圖表');
+                if (validPrices.length === 0) {
+                    console.error('❌ 有效價格數據為空，無法創建圖表');
                     return;
                 }
 
+                console.log('配置對象:', config);
                 goldChart = new Chart(ctx, config);
                 console.log('✅ 圖表創建成功');
                 console.log('圖表實例:', goldChart);
 
-                // 強制重新渲染
+                // 強制X軸標籤水平顯示
                 setTimeout(() => {
-                    if (goldChart) {
-                        goldChart.resize();
-                        goldChart.render();
-                        console.log('🔄 圖表重新渲染完成');
+                    if (goldChart && goldChart.options && goldChart.options.scales && goldChart.options.scales.x) {
+                        goldChart.options.scales.x.ticks.rotation = 0;
+                        goldChart.options.scales.x.ticks.maxTicksLimit = 6;
+                        goldChart.update('none');
+
+                        // 再次強制更新
+                        setTimeout(() => {
+                            goldChart.update('none');
+                        }, 200);
                     }
                 }, 100);
 
@@ -764,7 +1029,6 @@
                 console.error('❌ 創建圖表時發生錯誤:', error);
                 console.error('錯誤詳情:', error.message);
                 console.error('錯誤堆疊:', error.stack);
-                console.error('配置對象:', config);
             }
         }
 
@@ -772,6 +1036,9 @@
         function updateTechnicalIndicators(indicators) {
             console.log('📊 更新技術指標:', indicators);
 
+            if (indicators.ma_5) {
+                document.getElementById('ma5-value').textContent = '$' + indicators.ma_5.toFixed(2);
+            }
             if (indicators.ma_20) {
                 document.getElementById('ma20-value').textContent = '$' + indicators.ma_20.toFixed(2);
             }
@@ -847,6 +1114,7 @@
                 logs.push(`<div class="log-section">
                     <h4><i class="fas fa-chart-line"></i> 技術指標詳情</h4>
                     <div class="log-content">
+                        ${indicators.ma_5 ? `<p><strong>MA5 (5日移動平均):</strong> ${indicators.ma_5.toFixed(2)}</p>` : ''}
                         ${indicators.ma_20 ? `<p><strong>MA20 (20日移動平均):</strong> ${indicators.ma_20.toFixed(2)}</p>` : ''}
                         ${indicators.ma_50 ? `<p><strong>MA50 (50日移動平均):</strong> ${indicators.ma_50.toFixed(2)}</p>` : ''}
                         ${indicators.rsi ? `<p><strong>RSI (相對強弱指標):</strong> ${indicators.rsi.toFixed(1)} ${getRSIStatus(indicators.rsi)}</p>` : ''}
@@ -905,6 +1173,45 @@
                                             <td>${point.volume?.toLocaleString() || 'N/A'}</td>
                                         </tr>
                                     `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`);
+            }
+
+            // 每月平均線詳情
+            if (goldData.data?.monthly_average_line && goldData.data.monthly_average_line.length > 0) {
+                const monthlyData = goldData.data.monthly_average_line;
+                logs.push(`<div class="log-section">
+                    <h4><i class="fas fa-calendar-alt"></i> 每月平均線詳情</h4>
+                    <div class="log-content">
+                        <p><strong>數據點數:</strong> ${monthlyData.length}</p>
+                        <p><strong>時間範圍:</strong> ${new Date(monthlyData[0].time).toLocaleDateString('zh-TW')} - ${new Date(monthlyData[monthlyData.length - 1].time).toLocaleDateString('zh-TW')}</p>
+                        <div class="data-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>月份</th>
+                                        <th>平均價格</th>
+                                        <th>變化</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${monthlyData.map((point, index) => {
+                    const prevPrice = index > 0 ? monthlyData[index - 1].price : point.price;
+                    const change = point.price - prevPrice;
+                    const changePercent = (change / prevPrice * 100);
+                    return `
+                                            <tr>
+                                                <td>${new Date(point.time).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long' })}</td>
+                                                <td>$${point.price.toFixed(2)}</td>
+                                                <td class="${change >= 0 ? 'positive' : 'negative'}">
+                                                    ${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(1)}%)
+                                                </td>
+                                            </tr>
+                                        `;
+                }).join('')}
                                 </tbody>
                             </table>
                         </div>
@@ -1150,6 +1457,21 @@
     </script>
 
     <style>
+        /* 強制X軸標籤水平顯示 */
+        .chart-container canvas {
+            transform: none !important;
+        }
+
+        /* 強制圖表標籤水平顯示 */
+        .chart-container {
+            overflow: visible !important;
+        }
+
+        /* 確保X軸標籤不旋轉 */
+        .chart-container canvas {
+            transform: none !important;
+        }
+
         /* 詳細日誌樣式 */
         .data-details-card {
             background: var(--bg-card);
@@ -1198,7 +1520,7 @@
         }
 
         .data-table {
-            overflow-x: auto;lo
+            overflow-x: auto;
             margin-top: 1rem;
         }
 
@@ -1230,6 +1552,53 @@
             background: var(--bg-glass);
         }
 
+        .data-table .positive {
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .data-table .negative {
+            color: var(--error);
+            font-weight: bold;
+        }
+
+        /* 線條控制樣式 */
+        .line-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .line-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: var(--radius);
+            background: var(--bg-glass);
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .line-toggle:hover {
+            background: var(--bg-secondary);
+            border-color: var(--primary);
+        }
+
+        .line-toggle input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary);
+        }
+
+        .toggle-label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
         /* 響應式設計 */
         @media (max-width: 768px) {
             .data-table {
@@ -1240,6 +1609,20 @@
             .data-table td {
                 padding: 0.5rem;
             }
+
+            .line-controls {
+                gap: 0.5rem;
+            }
+
+            .line-toggle {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* 強制X軸標籤水平顯示 */
+        .chart-container canvas {
+            transform: none !important;
         }
     </style>
 </body>

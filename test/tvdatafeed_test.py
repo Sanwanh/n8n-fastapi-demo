@@ -110,6 +110,49 @@ def get_gold_futures_data():
         return None, None, None
 
 
+def calculate_monthly_high_low_avg(data):
+    """
+    計算每個月最高和最低價格的平均值
+    返回: DataFrame with 月度數據和對應的平均日期
+    """
+    if data is None or data.empty:
+        return None
+
+    print("正在計算月度高低平均值...")
+    
+    # 創建一個包含年月信息的副本
+    monthly_data = data.copy()
+    monthly_data['YearMonth'] = monthly_data.index.to_period('M')
+    
+    # 按月份分組並計算每月的最高和最低價
+    monthly_stats = monthly_data.groupby('YearMonth').agg({
+        'High': 'max',
+        'Low': 'min',
+        'Close': 'last'  # 用於獲取月末日期
+    })
+    
+    # 計算每月高低平均值
+    monthly_stats['High_Low_Avg'] = (monthly_stats['High'] + monthly_stats['Low']) / 2
+    
+    # 創建對應的日期（使用每月最後一個交易日的日期）
+    monthly_dates = []
+    for period in monthly_stats.index:
+        # 獲取該月份的最後一個交易日
+        month_data = monthly_data[monthly_data['YearMonth'] == period]
+        if not month_data.empty:
+            monthly_dates.append(month_data.index[-1])
+    
+    # 只取最近12個月的數據
+    if len(monthly_stats) > 12:
+        monthly_stats = monthly_stats.tail(12)
+        monthly_dates = monthly_dates[-12:]
+    
+    print(f"計算完成，共 {len(monthly_stats)} 個月的數據")
+    
+    # 為方便繪圖，返回日期和對應的平均值
+    return pd.Series(monthly_stats['High_Low_Avg'].values, index=monthly_dates)
+
+
 def calculate_statistics(data):
     """
     計算價格統計資訊
@@ -127,13 +170,14 @@ def calculate_statistics(data):
         'price_change': close_prices.iloc[-1] - close_prices.iloc[0],
         'price_change_pct': ((close_prices.iloc[-1] - close_prices.iloc[0]) / close_prices.iloc[0]) * 100,
         'volatility': close_prices.std(),
-        'latest_date': close_prices.index[-1]
+        'latest_date': close_prices.index[-1],
+        'yearly_average': close_prices.mean()  # 年均線值
     }
 
     return stats
 
 
-def create_visualization(data, stats):
+def create_visualization(data, stats, monthly_hl_avg=None):
     """
     創建價格視覺化圖表
     """
@@ -163,6 +207,23 @@ def create_visualization(data, stats):
     ax1.plot(dates, ma_20, linewidth=1, alpha=0.7, color='blue', label='MA20')
     ax1.plot(dates, ma_50, linewidth=1, alpha=0.7, color='red', label='MA50')
 
+    # 新增：繪製月度高低平均線
+    if monthly_hl_avg is not None and not monthly_hl_avg.empty:
+        ax1.plot(monthly_hl_avg.index, monthly_hl_avg.values, 
+                linewidth=2, alpha=0.8, color='purple', 
+                marker='o', markersize=6, 
+                label=f'Monthly H/L Avg ({len(monthly_hl_avg)} months)')
+        
+        print(f"月度高低平均線已添加，包含 {len(monthly_hl_avg)} 個數據點")
+
+    # 新增：繪製年均線（水平線）
+    yearly_avg = stats['yearly_average']
+    ax1.axhline(y=yearly_avg, color='orange', linestyle='--', 
+                linewidth=2, alpha=0.8, 
+                label=f'Yearly Average: ${yearly_avg:.2f}')
+    
+    print(f"年均線已添加：${yearly_avg:.2f} USD/oz")
+
     # 設定主圖標題 - 包含最新更新時間
     latest_time = stats["latest_date"]
     ax1.set_title(f'Gold Futures (GC=F) - 1 Year Chart | Current: ${stats["current_price"]:.2f} USD/oz ({latest_time.strftime("%Y-%m-%d %H:%M")})',
@@ -172,14 +233,17 @@ def create_visualization(data, stats):
     # 調整圖例位置，避免與統計框重疊
     ax1.legend(loc='upper right', framealpha=0.9)
 
-
-    # 添加統計資訊文字框 - 修正格式問題
+    # 添加統計資訊文字框 - 更新以包含月度平均資訊
     info_text = f'''Statistics (1 Year):
 Max: ${stats["max_price"]:.2f}
 Min: ${stats["min_price"]:.2f}
 Avg: ${stats["avg_price"]:.2f}
 Change: ${stats["price_change"]:+.2f} ({stats["price_change_pct"]:+.1f}%)
 Volatility: ${stats["volatility"]:.2f}'''
+
+    if monthly_hl_avg is not None and not monthly_hl_avg.empty:
+        monthly_avg_value = monthly_hl_avg.mean()
+        info_text += f'\nMonthly H/L Avg: ${monthly_avg_value:.2f}'
 
     # 調整文字框位置和樣式，避免重疊
     ax1.text(0.02, 0.95, info_text, transform=ax1.transAxes,
@@ -221,6 +285,9 @@ def main():
 
     # 計算統計資訊
     stats = calculate_statistics(data)
+    
+    # 計算月度高低平均值
+    monthly_hl_avg = calculate_monthly_high_low_avg(data)
 
     # 顯示基本資訊
     print("\n" + "=" * 30)
@@ -231,10 +298,14 @@ def main():
     print(f"年度最低: ${stats['min_price']:.2f} USD/oz")
     print(f"年度變化: ${stats['price_change']:+.2f} USD ({stats['price_change_pct']:+.1f}%)")
     print(f"最後更新: {stats['latest_date'].strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    if monthly_hl_avg is not None and not monthly_hl_avg.empty:
+        monthly_avg_value = monthly_hl_avg.mean()
+        print(f"月度高低平均: ${monthly_avg_value:.2f} USD/oz ({len(monthly_hl_avg)} 個月)")
 
     # 創建視覺化
     print(f"\n正在生成圖表...")
-    fig = create_visualization(data, stats)
+    fig = create_visualization(data, stats, monthly_hl_avg)
 
     if fig:
         plt.show()

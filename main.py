@@ -380,6 +380,24 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
         technical_indicators = calculate_technical_indicators_enhanced(hist_data)
         # logger.info(f"📈 技術指標: {list(technical_indicators.keys())}")
 
+        # 計算移動平均線數據
+        ma_lines = {}
+        if len(hist_data) >= 5:
+            ma_5_data = hist_data['Close'].rolling(window=5).mean().dropna()
+            ma_lines["ma_5"] = [{"time": idx.strftime('%Y-%m-%d'), "price": float(val)} 
+                               for idx, val in ma_5_data.items()]
+        
+        if len(hist_data) >= 20:
+            ma_20_data = hist_data['Close'].rolling(window=20).mean().dropna()
+            ma_lines["ma_20"] = [{"time": idx.strftime('%Y-%m-%d'), "price": float(val)} 
+                                for idx, val in ma_20_data.items()]
+
+        # 計算每月平均線
+        monthly_average_line = calculate_monthly_average_line(hist_data)
+
+        # 計算年平均價格線
+        yearly_average_line = calculate_yearly_average_line(hist_data)
+
         # 判斷市場狀態
         market_status = determine_market_status()
         # logger.info(f"🏪 市場狀態: {market_status}")
@@ -406,6 +424,9 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
                 "last_updated": stats['latest_date'].isoformat(),
                 "last_updated_formatted": latest_processing_time,
                 "chart_data": chart_data,
+                "ma_lines": ma_lines,
+                "monthly_average_line": monthly_average_line,
+                "yearly_average_line": yearly_average_line,
                 "market_status": market_status,
                 "technical_indicators": technical_indicators,
                 "period": period,
@@ -613,16 +634,25 @@ def calculate_technical_indicators_enhanced(hist_data):
     try:
         close_prices = hist_data['Close'].dropna()
 
+        # MA5 計算
+        if len(close_prices) >= 5:
+            ma_5 = close_prices.rolling(window=5).mean().iloc[-1]
+            if not pd.isna(ma_5):
+                technical_indicators["ma_5"] = float(ma_5)
+
+        # MA20 計算
         if len(close_prices) >= 20:
             ma_20 = close_prices.rolling(window=20).mean().iloc[-1]
             if not pd.isna(ma_20):
                 technical_indicators["ma_20"] = float(ma_20)
 
+        # MA50 計算
         if len(close_prices) >= 50:
             ma_50 = close_prices.rolling(window=50).mean().iloc[-1]
             if not pd.isna(ma_50):
                 technical_indicators["ma_50"] = float(ma_50)
 
+        # RSI 計算
         if len(close_prices) >= 14:
             rsi = calculate_rsi(close_prices.values)
             if rsi is not None:
@@ -680,6 +710,90 @@ def calculate_rsi(prices, periods=14):
     except Exception as e:
         logger.warning(f"⚠️ RSI 計算錯誤: {e}")
         return None
+
+
+def calculate_monthly_average_line(hist_data):
+    """計算每月最高最低價格平均值的線 - 每個月一個點"""
+    try:
+        # 確保數據有日期索引
+        if not isinstance(hist_data.index, pd.DatetimeIndex):
+            hist_data.index = pd.to_datetime(hist_data.index)
+        
+        # 統一時區處理 - 轉換為無時區的日期
+        hist_data.index = hist_data.index.tz_localize(None)
+        
+        # 按月份分組並計算每月的最高和最低價格
+        monthly_data = hist_data.groupby(hist_data.index.to_period('M')).agg({
+            'High': 'max',
+            'Low': 'min'
+        })
+        
+        # 計算每月最高最低價格的平均值
+        monthly_averages = (monthly_data['High'] + monthly_data['Low']) / 2
+        
+        # 取最近12個月的數據
+        monthly_averages = monthly_averages.tail(12)
+        
+        # 轉換為圖表數據格式 - 每個月只創建一個數據點
+        monthly_line_data = []
+        for period, avg_price in monthly_averages.items():
+            # 使用該月的最後一個交易日作為代表日期
+            month_end = period.to_timestamp() + pd.offsets.MonthEnd(0)
+            
+            # 找到該月的最後一個交易日
+            month_trading_days = [date for date in hist_data.index if date <= month_end]
+            if month_trading_days:
+                last_trading_day = max(month_trading_days)
+                monthly_line_data.append({
+                    'time': last_trading_day.strftime('%Y-%m-%d'),
+                    'price': float(avg_price)
+                })
+        
+        logger.info(f"📊 月平均線計算完成，共 {len(monthly_line_data)} 個數據點")
+        logger.info(f"    月平均價格範圍: ${monthly_averages.min():.2f} - ${monthly_averages.max():.2f}")
+        
+        return monthly_line_data
+        
+    except Exception as e:
+        logger.warning(f"⚠️ 每月平均線計算錯誤: {e}")
+        return []
+
+
+def calculate_yearly_average_line(hist_data):
+    """計算年平均價格線 - 修正為真正的水平線"""
+    try:
+        # 確保數據有日期索引
+        if not isinstance(hist_data.index, pd.DatetimeIndex):
+            hist_data.index = pd.to_datetime(hist_data.index)
+        
+        # 計算過去一年的平均價格
+        one_year_ago = hist_data.index.max() - pd.DateOffset(years=1)
+        yearly_data = hist_data[hist_data.index >= one_year_ago]
+        
+        if len(yearly_data) == 0:
+            logger.warning("⚠️ 沒有足夠的數據計算年平均價格")
+            return []
+        
+        # 計算年平均價格
+        yearly_avg_price = yearly_data['Close'].mean()
+        
+        # 創建一條水平線，覆蓋整個時間範圍
+        yearly_line_data = []
+        for date in hist_data.index:
+            yearly_line_data.append({
+                'time': date.strftime('%Y-%m-%d'),
+                'price': float(yearly_avg_price)
+            })
+        
+        logger.info(f"📊 年平均價格計算完成: ${yearly_avg_price:.2f}")
+        logger.info(f"    數據範圍: {yearly_data.index.min().strftime('%Y-%m-%d')} 至 {yearly_data.index.max().strftime('%Y-%m-%d')}")
+        logger.info(f"    數據點數: {len(yearly_data)}")
+        
+        return yearly_line_data
+        
+    except Exception as e:
+        logger.warning(f"⚠️ 年平均價格計算錯誤: {e}")
+        return []
 
 
 def determine_market_status():
