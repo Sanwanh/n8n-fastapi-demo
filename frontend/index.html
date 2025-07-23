@@ -169,6 +169,28 @@
             </div>
         </div>
 
+        <!-- 新增數據詳情卡片 -->
+        <div class="card data-details-card" style="margin-top: 2rem;">
+            <div class="card-header">
+                <div class="card-icon">
+                    <i class="fas fa-database"></i>
+                </div>
+                <h2>詳細數據日誌</h2>
+                <button onclick="toggleDataDetails()" class="action-btn secondary" id="details-toggle">
+                    <i class="fas fa-eye"></i>
+                    <span>顯示詳情</span>
+                </button>
+            </div>
+            <div class="card-content" id="data-details" style="display: none;">
+                <div id="detailed-logs">
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <span>正在載入詳細數據...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <footer class="page-footer">
             <div class="footer-content">
                 <div class="footer-info">
@@ -194,90 +216,114 @@
     </div>
 
     <script>
-        // 全域變數
+        // ===== 全域變數 =====
         let goldChart = null;
         let goldPriceData = null;
+        let marketData = null;
         let chartType = 'line';
         let currentPeriod = '1y';
         let autoRefreshInterval = null;
         let indicatorsVisible = false;
+        let detailsVisible = false;
 
-        // 時間更新
-        function updateSystemTime() {
-            const now = new Date();
-            document.getElementById('current-time').textContent = now.toLocaleTimeString('zh-TW');
+        // ===== 初始化 =====
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 市場分析系統載入中...');
+
+            // 開始載入數據
+            initializeSystem();
+
+            // 設定事件監聽
+            setupEventListeners();
+
+            // 啟動時間更新
+            updateSystemTime();
+            setInterval(updateSystemTime, 1000);
+
+            // 設定自動刷新（每5分鐘）
+            autoRefreshInterval = setInterval(refreshAllData, 300000);
+
+            console.log('✅ 系統初始化完成');
+        });
+
+        // ===== 系統初始化 =====
+        async function initializeSystem() {
+            console.log('📊 開始載入所有數據...');
+
+            // 並行載入數據
+            await Promise.all([
+                loadMarketData(),
+                loadGoldPrice(currentPeriod, true)
+            ]);
+
+            console.log('✅ 所有數據載入完成');
         }
 
-        // ==================================================================
-        // ===== 修正開始 (FIX START) - 增強錯誤處理 ========================
-        // ==================================================================
+        // ===== 事件監聽設定 =====
+        function setupEventListeners() {
+            // 時間期間選擇
+            const periodSelect = document.getElementById('time-period');
+            if (periodSelect) {
+                periodSelect.addEventListener('change', function() {
+                    currentPeriod = this.value;
+                    console.log(`🔄 切換時間期間到: ${currentPeriod}`);
+                    loadGoldPrice(currentPeriod, true);
+                });
+            }
 
-        // 載入黃金價格數據 - 修正錯誤處理
-        async function loadGoldPrice(period = currentPeriod, showLoading = true) {
-            try {
-                if (showLoading) {
-                    updatePriceStatus('loading', '載入中...');
-                }
-
-                console.log(`🔍 正在獲取黃金期貨數據 - 期間: ${period}`);
-                const response = await fetch(`/api/gold-price?period=${period}&interval=1d`);
-
-                // 即使 HTTP 狀態碼是 200，API 本身也可能回傳錯誤訊息
-                const result = await response.json();
-
-                if (response.ok && result.status === 'success' && result.data) {
-                    goldPriceData = result.data;
-                    displayGoldPrice(result.data);
-                    updateTechnicalIndicators(result.data.technical_indicators || {});
-                    createGoldChart(result.data);
-                    updatePriceStatus('connected', '即時更新');
-
-                    if (result.next_update) {
-                        document.getElementById('next-update').textContent =
-                            new Date(result.next_update).toLocaleTimeString('zh-TW');
+            // 圖表類型切換
+            const chartButtons = document.querySelectorAll('.chart-control-btn');
+            chartButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    chartButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    chartType = this.dataset.type;
+                    console.log(`📈 切換圖表類型到: ${chartType}`);
+                    if (goldPriceData) {
+                        createGoldChart(goldPriceData);
                     }
-                    const lastUpdated = new Date(result.data.last_updated);
-                    document.getElementById('last-updated').querySelector('span').textContent =
-                        `最後更新: ${lastUpdated.toLocaleString('zh-TW')}`;
-                    console.log(`✅ 成功獲取黃金價格數據: $${result.data.current_price.toFixed(2)}`);
-                } else {
-                    // 將 API 回傳的錯誤訊息或 HTTP 錯誤拋出，由 catch 區塊統一處理
-                    throw new Error(result.message || `HTTP 錯誤: ${response.status}`);
-                }
-            } catch (error) {
-                console.error('❌ 載入黃金價格失敗:', error);
-                // 顯示從 try 區塊中拋出的具體錯誤訊息
-                displayPriceError('無法載入黃金價格: ' + error.message);
-                updatePriceStatus('error', '連接錯誤');
+                });
+            });
+
+            console.log('🎯 事件監聽器設定完成');
+        }
+
+        // ===== 時間更新 =====
+        function updateSystemTime() {
+            const now = new Date();
+            const timeElement = document.getElementById('current-time');
+            if (timeElement) {
+                timeElement.textContent = now.toLocaleTimeString('zh-TW');
             }
         }
 
-        // 載入市場數據 - 修正數據接收和錯誤處理問題
+        // ===== 載入市場數據 =====
         async function loadMarketData() {
             try {
+                console.log('📈 開始載入市場情感分析數據...');
                 updateMarketStatus('loading', '載入中...');
-                console.log('📊 開始載入市場情感分析數據...');
 
                 const response = await fetch('/api/current-data');
                 const result = await response.json();
 
-                if (response.ok && result.status === 'success' && result.data && typeof result.data === 'object') {
-                    const hasValidData = Object.keys(result.data).length > 0;
+                console.log('📥 市場數據API回應:', result);
 
-                    if (hasValidData) {
-                        console.log('✅ 成功接收市場數據:', result.data);
-                        displayMarketData(result.data);
+                if (response.ok && result.status === 'success') {
+                    if (result.data && typeof result.data === 'object' && Object.keys(result.data).length > 0) {
+                        marketData = result.data;
+                        console.log('✅ 成功接收市場數據:', marketData);
+                        displayMarketData(marketData);
                         updateMarketStatus('connected', '已連接');
-                        if (result.data.received_time) {
-                            // 這裡可以選擇性更新，避免與黃金價格的更新時間衝突
+
+                        if (marketData.received_time) {
+                            updateLastUpdated(`市場分析更新: ${marketData.received_time}`);
                         }
                     } else {
-                        console.log('⚠️ 數據為空或無效');
+                        console.log('⚠️ 市場數據為空');
                         displayNoMarketData();
                         updateMarketStatus('waiting', '等待數據...');
                     }
                 } else {
-                    // 拋出錯誤，由 catch 區塊統一處理
                     throw new Error(result.message || `HTTP 錯誤: ${response.status}`);
                 }
             } catch (error) {
@@ -287,48 +333,215 @@
             }
         }
 
-        // ==================================================================
-        // ===== 修正結束 (FIX END) =========================================
-        // ==================================================================
+        // ===== 載入黃金價格數據 =====
+        async function loadGoldPrice(period = currentPeriod, showLoading = true) {
+            try {
+                if (showLoading) {
+                    updatePriceStatus('loading', '載入中...');
+                    showPriceLoading();
+                }
 
-        // 顯示市場數據
+                console.log(`🔍 正在獲取黃金期貨數據 - 期間: ${period}`);
+                const response = await fetch(`/api/gold-price?period=${period}&interval=1d`);
+                const result = await response.json();
+
+                console.log('💰 黃金價格API回應:', result);
+
+                if (response.ok && result.status === 'success' && result.data) {
+                    goldPriceData = result.data;
+                    console.log('✅ 成功獲取黃金價格數據:');
+                    console.log(`   價格: $${result.data.current_price}`);
+                    console.log(`   變化: ${result.data.change} (${result.data.change_percent}%)`);
+                    console.log(`   數據點數量: ${result.data.chart_data?.length || 0}`);
+
+                    displayGoldPrice(result.data);
+                    updateTechnicalIndicators(result.data.technical_indicators || {});
+                    createGoldChart(result.data);
+                    updatePriceStatus('connected', '即時更新');
+
+                    if (result.next_update) {
+                        document.getElementById('next-update').textContent =
+                            new Date(result.next_update).toLocaleTimeString('zh-TW');
+                    }
+
+                    if (result.data.last_updated) {
+                        const lastUpdated = new Date(result.data.last_updated);
+                        updateLastUpdated(`最後更新: ${lastUpdated.toLocaleString('zh-TW')}`);
+                    }
+
+                    // 更新詳細日誌
+                    updateDetailedLogs(result);
+
+                } else {
+                    throw new Error(result.message || `HTTP 錯誤: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('❌ 載入黃金價格失敗:', error);
+                displayPriceError('無法載入黃金價格: ' + error.message);
+                updatePriceStatus('error', '連接錯誤');
+            }
+        }
+
+        // ===== 顯示市場數據 =====
         function displayMarketData(data) {
-            // ... 此函數保持不變 ...
+            console.log('🎨 顯示市場數據:', data);
+
+            const sentimentClass = getSentimentClass(data.average_sentiment_score);
+            const sentimentText = getSentimentText(data.average_sentiment_score);
+
+            const display = document.getElementById('market-data-display');
+            display.innerHTML = `
+                <div class="market-data">
+                    <div class="data-row">
+                        <div class="data-label">
+                            <i class="fas fa-heart-pulse"></i>
+                            情感分數
+                        </div>
+                        <div class="data-value">
+                            <span class="sentiment-score sentiment-${sentimentClass}">
+                                ${sentimentText} (${data.average_sentiment_score?.toFixed(3) || 'N/A'})
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="data-row">
+                        <div class="data-label">
+                            <i class="fas fa-calendar-day"></i>
+                            市場日期
+                        </div>
+                        <div class="data-value">${data.market_date || '未知'}</div>
+                    </div>
+
+                    <div class="data-row">
+                        <div class="data-label">
+                            <i class="fas fa-gauge"></i>
+                            信心水平
+                        </div>
+                        <div class="data-value">${data.confidence_level || '未評估'}</div>
+                    </div>
+
+                    <div class="data-row">
+                        <div class="data-label">
+                            <i class="fas fa-trending-up"></i>
+                            趨勢方向
+                        </div>
+                        <div class="data-value">${data.trend_direction || '未評估'}</div>
+                    </div>
+
+                    <div class="data-row">
+                        <div class="data-label">
+                            <i class="fas fa-shield-alt"></i>
+                            風險評估
+                        </div>
+                        <div class="data-value">${data.risk_assessment || '未評估'}</div>
+                    </div>
+
+                    <div class="data-row full-width">
+                        <div class="data-label">
+                            <i class="fas fa-newspaper"></i>
+                            分析內容
+                        </div>
+                        <div class="market-content" id="market-content">
+                            ${data.message_content || '暫無內容'}
+                        </div>
+                        ${data.message_content && data.message_content.length > 200 ?
+                            '<button class="expand-btn" onclick="toggleMarketContent()">展開全文</button>' : ''}
+                    </div>
+
+                    <div class="data-row">
+                        <div class="data-label">
+                            <i class="fas fa-clock"></i>
+                            接收時間
+                        </div>
+                        <div class="data-value">${data.received_time || '未知'}</div>
+                    </div>
+                </div>
+            `;
         }
 
-        // 顯示黃金價格
+        // ===== 顯示黃金價格 =====
         function displayGoldPrice(data) {
-            // ... 此函數保持不變 ...
+            console.log('💰 顯示黃金價格數據:', data);
+
+            const priceChangeClass = data.change >= 0 ? 'positive' : 'negative';
+            const priceChangeIcon = data.change >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+
+            const display = document.getElementById('price-display');
+            display.innerHTML = `
+                <div class="gold-price-info">
+                    <div class="price-main">
+                        <div class="current-price">
+                            <span class="price-value">$${data.current_price?.toFixed(2) || 'N/A'}</span>
+                            <span class="price-unit">${data.unit || 'USD/oz'}</span>
+                        </div>
+                        <div class="price-change ${priceChangeClass}">
+                            <i class="fas ${priceChangeIcon}"></i>
+                            <span>${data.change >= 0 ? '+' : ''}${data.change?.toFixed(2) || 'N/A'}</span>
+                            <span>(${data.change_percent >= 0 ? '+' : ''}${data.change_percent?.toFixed(2) || 'N/A'}%)</span>
+                        </div>
+                    </div>
+
+                    <div class="price-statistics">
+                        <div class="stat-grid">
+                            <div class="stat-item">
+                                <span class="stat-label">24H 高</span>
+                                <span class="stat-value">$${data.high_24h?.toFixed(2) || 'N/A'}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">24H 低</span>
+                                <span class="stat-value">$${data.low_24h?.toFixed(2) || 'N/A'}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">平均價格</span>
+                                <span class="stat-value">$${data.avg_price?.toFixed(2) || 'N/A'}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">波動率</span>
+                                <span class="stat-value">${data.volatility?.toFixed(2) || 'N/A'}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">交易量</span>
+                                <span class="stat-value">${data.volume_24h?.toLocaleString() || 'N/A'}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">市場狀態</span>
+                                <span class="stat-value market-${data.market_status}">${getMarketStatusText(data.market_status)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
-        // 更新技術指標
-        function updateTechnicalIndicators(indicators) {
-            // ... 此函數保持不變 ...
-        }
-
-        // 創建黃金價格圖表 - 已修正競爭條件問題
+        // ===== 創建黃金價格圖表 =====
         function createGoldChart(data) {
             const canvas = document.getElementById('goldChart');
             if (!canvas) {
                 console.error('❌ 找不到 Canvas 元素: goldChart');
                 return;
             }
-            const ctx = canvas.getContext('2d');
-            const existingChart = Chart.getChart(canvas);
-            if (existingChart) {
-                existingChart.destroy();
+
+            // 重要：正確銷毀現有圖表
+            if (goldChart) {
+                console.log('🗑️ 銷毀現有圖表');
+                goldChart.destroy();
+                goldChart = null;
             }
 
             if (!data.chart_data || !Array.isArray(data.chart_data) || data.chart_data.length === 0) {
                 console.warn('⚠️ 圖表數據為空或無效，不渲染圖表');
-                // 清空容器，避免顯示舊圖表
+                const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 return;
             }
 
+            console.log(`📊 創建圖表，數據點: ${data.chart_data.length}`);
+
             const chartData = data.chart_data;
             const labels = chartData.map(d => new Date(d.time));
             const prices = chartData.map(d => d.price);
+
+            console.log(`📈 圖表數據範圍: $${Math.min(...prices).toFixed(2)} - $${Math.max(...prices).toFixed(2)}`);
 
             const config = {
                 type: chartType,
@@ -338,7 +551,11 @@
                         label: '黃金價格 (USD/oz)',
                         data: prices,
                         borderColor: '#FFD700',
-                        backgroundColor: chartType === 'line' ? 'rgba(255, 215, 0, 0.1)' : prices.map((price, i) => chartData[i].open <= price ? '#10b981' : '#ef4444'),
+                        backgroundColor: chartType === 'line' ? 'rgba(255, 215, 0, 0.1)' :
+                            prices.map((price, i) => {
+                                const open = chartData[i]?.open || price;
+                                return open <= price ? '#10b981' : '#ef4444';
+                            }),
                         borderWidth: 2,
                         fill: chartType === 'line',
                         tension: 0.4,
@@ -350,15 +567,546 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     interaction: { intersect: false, mode: 'index' },
-                    plugins: { /* ... options ... */ },
-                    scales: { /* ... options ... */ }
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `黃金期貨價格走勢 (${currentPeriod.toUpperCase()})`,
+                            color: '#f8fafc',
+                            font: { size: 16, weight: 'bold' }
+                        },
+                        legend: {
+                            labels: { color: '#cbd5e1' }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#f8fafc',
+                            bodyColor: '#cbd5e1',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    return `價格: $${context.parsed.y.toFixed(2)}`;
+                                },
+                                afterLabel: function(context) {
+                                    const dataPoint = chartData[context.dataIndex];
+                                    if (dataPoint) {
+                                        return [
+                                            `開盤: $${dataPoint.open?.toFixed(2) || 'N/A'}`,
+                                            `最高: $${dataPoint.high?.toFixed(2) || 'N/A'}`,
+                                            `最低: $${dataPoint.low?.toFixed(2) || 'N/A'}`,
+                                            `交易量: ${dataPoint.volume?.toLocaleString() || 'N/A'}`
+                                        ];
+                                    }
+                                    return [];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: currentPeriod === '1d' ? 'hour' :
+                                      currentPeriod === '5d' ? 'day' :
+                                      currentPeriod.includes('mo') ? 'week' : 'month'
+                            },
+                            ticks: { color: '#64748b' },
+                            grid: { color: 'rgba(100, 116, 139, 0.1)' }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#64748b',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            },
+                            grid: { color: 'rgba(100, 116, 139, 0.1)' }
+                        }
+                    }
                 }
             };
-            goldChart = new Chart(ctx, config);
+
+            try {
+                const ctx = canvas.getContext('2d');
+                goldChart = new Chart(ctx, config);
+                console.log('✅ 圖表創建成功');
+            } catch (error) {
+                console.error('❌ 創建圖表時發生錯誤:', error);
+            }
         }
 
-        // ... 其餘所有輔助函數和事件監聽器保持不變 ...
+        // ===== 更新技術指標 =====
+        function updateTechnicalIndicators(indicators) {
+            console.log('📊 更新技術指標:', indicators);
 
+            if (indicators.ma_20) {
+                document.getElementById('ma20-value').textContent = '$' + indicators.ma_20.toFixed(2);
+            }
+            if (indicators.ma_50) {
+                document.getElementById('ma50-value').textContent = '$' + indicators.ma_50.toFixed(2);
+            }
+            if (indicators.rsi) {
+                const rsiElement = document.getElementById('rsi-value');
+                rsiElement.textContent = indicators.rsi.toFixed(1);
+
+                // RSI 顏色指示
+                rsiElement.className = 'indicator-value';
+                if (indicators.rsi > 70) {
+                    rsiElement.classList.add('rsi-overbought');
+                } else if (indicators.rsi < 30) {
+                    rsiElement.classList.add('rsi-oversold');
+                } else {
+                    rsiElement.classList.add('rsi-neutral');
+                }
+            }
+        }
+
+        // ===== 更新詳細日誌 =====
+        function updateDetailedLogs(goldData) {
+            const detailsContainer = document.getElementById('detailed-logs');
+            if (!detailsContainer) return;
+
+            console.log('📝 更新詳細日誌');
+
+            const logs = [];
+
+            // 系統資訊
+            logs.push(`<div class="log-section">
+                <h4><i class="fas fa-info-circle"></i> 系統資訊</h4>
+                <div class="log-content">
+                    <p><strong>系統時間:</strong> ${new Date().toLocaleString('zh-TW')}</p>
+                    <p><strong>數據來源:</strong> ${goldData.data_source || 'Yahoo Finance'}</p>
+                    <p><strong>API狀態:</strong> <span class="status-success">正常</span></p>
+                    <p><strong>下次更新:</strong> ${goldData.next_update || '5分鐘後'}</p>
+                </div>
+            </div>`);
+
+            // 黃金價格詳情
+            if (goldData.data) {
+                logs.push(`<div class="log-section">
+                    <h4><i class="fas fa-coins"></i> 黃金價格詳情</h4>
+                    <div class="log-content">
+                        <p><strong>代碼:</strong> ${goldData.data.symbol || 'GC=F'}</p>
+                        <p><strong>名稱:</strong> ${goldData.data.name || 'Gold Futures'}</p>
+                        <p><strong>當前價格:</strong> ${goldData.data.current_price?.toFixed(2) || 'N/A'}</p>
+                        <p><strong>變化金額:</strong> ${goldData.data.change >= 0 ? '+' : ''}${goldData.data.change?.toFixed(2) || 'N/A'}</p>
+                        <p><strong>變化百分比:</strong> ${goldData.data.change_percent >= 0 ? '+' : ''}${goldData.data.change_percent?.toFixed(2) || 'N/A'}%</p>
+                        <p><strong>24小時最高:</strong> ${goldData.data.high_24h?.toFixed(2) || 'N/A'}</p>
+                        <p><strong>24小時最低:</strong> ${goldData.data.low_24h?.toFixed(2) || 'N/A'}</p>
+                        <p><strong>平均價格:</strong> ${goldData.data.avg_price?.toFixed(2) || 'N/A'}</p>
+                        <p><strong>波動率:</strong> ${goldData.data.volatility?.toFixed(2) || 'N/A'}</p>
+                        <p><strong>交易量:</strong> ${goldData.data.volume_24h?.toLocaleString() || 'N/A'}</p>
+                        <p><strong>市場狀態:</strong> ${getMarketStatusText(goldData.data.market_status)}</p>
+                        <p><strong>貨幣單位:</strong> ${goldData.data.currency || 'USD'}</p>
+                        <p><strong>數據點數量:</strong> ${goldData.data.data_points || 0}</p>
+                        <p><strong>交易天數:</strong> ${goldData.data.trading_days || 0}</p>
+                        <p><strong>時間期間:</strong> ${goldData.data.period || currentPeriod}</p>
+                        <p><strong>時間間隔:</strong> ${goldData.data.interval || '1d'}</p>
+                        <p><strong>最後更新:</strong> ${new Date(goldData.data.last_updated).toLocaleString('zh-TW')}</p>
+                    </div>
+                </div>`);
+            }
+
+            // 技術指標詳情
+            if (goldData.data?.technical_indicators) {
+                const indicators = goldData.data.technical_indicators;
+                logs.push(`<div class="log-section">
+                    <h4><i class="fas fa-chart-line"></i> 技術指標詳情</h4>
+                    <div class="log-content">
+                        ${indicators.ma_20 ? `<p><strong>MA20 (20日移動平均):</strong> ${indicators.ma_20.toFixed(2)}</p>` : ''}
+                        ${indicators.ma_50 ? `<p><strong>MA50 (50日移動平均):</strong> ${indicators.ma_50.toFixed(2)}</p>` : ''}
+                        ${indicators.rsi ? `<p><strong>RSI (相對強弱指標):</strong> ${indicators.rsi.toFixed(1)} ${getRSIStatus(indicators.rsi)}</p>` : ''}
+                        ${indicators.volatility_5d ? `<p><strong>5日波動率:</strong> ${indicators.volatility_5d.toFixed(2)}</p>` : ''}
+                        ${indicators.price_vs_ma20 ? `<p><strong>價格相對MA20:</strong> ${indicators.price_vs_ma20 >= 0 ? '+' : ''}${indicators.price_vs_ma20.toFixed(2)}%</p>` : ''}
+                    </div>
+                </div>`);
+            }
+
+            // 市場數據詳情
+            if (marketData) {
+                logs.push(`<div class="log-section">
+                    <h4><i class="fas fa-brain"></i> 市場情感分析詳情</h4>
+                    <div class="log-content">
+                        <p><strong>情感分數:</strong> ${marketData.average_sentiment_score?.toFixed(3) || 'N/A'}</p>
+                        <p><strong>情感描述:</strong> ${getSentimentText(marketData.average_sentiment_score)}</p>
+                        <p><strong>市場日期:</strong> ${marketData.market_date || '未知'}</p>
+                        <p><strong>信心水平:</strong> ${marketData.confidence_level || '未評估'}</p>
+                        <p><strong>趨勢方向:</strong> ${marketData.trend_direction || '未評估'}</p>
+                        <p><strong>風險評估:</strong> ${marketData.risk_assessment || '未評估'}</p>
+                        <p><strong>接收時間:</strong> ${marketData.received_time || '未知'}</p>
+                        <p><strong>內容長度:</strong> ${marketData.message_content?.length || 0} 字元</p>
+                    </div>
+                </div>`);
+            }
+
+            // 圖表數據樣本
+            if (goldData.data?.chart_data && goldData.data.chart_data.length > 0) {
+                const chartData = goldData.data.chart_data;
+                const sampleSize = Math.min(5, chartData.length);
+                const samples = chartData.slice(-sampleSize);
+
+                logs.push(`<div class="log-section">
+                    <h4><i class="fas fa-database"></i> 圖表數據樣本 (最近${sampleSize}筆)</h4>
+                    <div class="log-content">
+                        <div class="data-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>時間</th>
+                                        <th>開盤</th>
+                                        <th>最高</th>
+                                        <th>最低</th>
+                                        <th>收盤</th>
+                                        <th>交易量</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${samples.map(point => `
+                                        <tr>
+                                            <td>${new Date(point.time).toLocaleDateString('zh-TW')}</td>
+                                            <td>${point.open?.toFixed(2) || 'N/A'}</td>
+                                            <td>${point.high?.toFixed(2) || 'N/A'}</td>
+                                            <td>${point.low?.toFixed(2) || 'N/A'}</td>
+                                            <td>${point.price?.toFixed(2) || 'N/A'}</td>
+                                            <td>${point.volume?.toLocaleString() || 'N/A'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`);
+            }
+
+            // 完整年度數據統計
+            if (goldData.data?.chart_data && goldData.data.chart_data.length > 0) {
+                const chartData = goldData.data.chart_data;
+                const prices = chartData.map(d => d.price).filter(p => p && !isNaN(p));
+                const volumes = chartData.map(d => d.volume).filter(v => v && !isNaN(v));
+
+                logs.push(`<div class="log-section">
+                    <h4><i class="fas fa-chart-bar"></i> 完整年度數據統計</h4>
+                    <div class="log-content">
+                        <p><strong>總數據點數:</strong> ${chartData.length}</p>
+                        <p><strong>有效價格數據:</strong> ${prices.length}</p>
+                        <p><strong>價格範圍:</strong> ${Math.min(...prices).toFixed(2)} - ${Math.max(...prices).toFixed(2)}</p>
+                        <p><strong>年度平均價格:</strong> ${(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2)}</p>
+                        <p><strong>年度價格標準差:</strong> ${calculateStandardDeviation(prices).toFixed(2)}</p>
+                        <p><strong>總交易量:</strong> ${volumes.reduce((a, b) => a + b, 0).toLocaleString()}</p>
+                        <p><strong>平均日交易量:</strong> ${(volumes.reduce((a, b) => a + b, 0) / volumes.length).toLocaleString()}</p>
+                        <p><strong>數據起始日期:</strong> ${new Date(chartData[0].time).toLocaleDateString('zh-TW')}</p>
+                        <p><strong>數據結束日期:</strong> ${new Date(chartData[chartData.length - 1].time).toLocaleDateString('zh-TW')}</p>
+                        <p><strong>年度漲跌:</strong> ${((prices[prices.length - 1] - prices[0]) / prices[0] * 100).toFixed(2)}%</p>
+                    </div>
+                </div>`);
+            }
+
+            detailsContainer.innerHTML = logs.join('');
+        }
+
+        // ===== 狀態更新函數 =====
+        function updateMarketStatus(status, text) {
+            const dot = document.querySelector('#status-indicator .indicator-dot');
+            const textElement = document.querySelector('#status-indicator .indicator-text');
+
+            if (dot && textElement) {
+                dot.classList.remove('connected', 'error', 'loading');
+                if (status !== 'waiting') {
+                    dot.classList.add(status);
+                }
+                textElement.textContent = text;
+            }
+        }
+
+        function updatePriceStatus(status, text) {
+            const dot = document.querySelector('#price-status .status-dot');
+            const textElement = document.querySelector('#price-status .status-text');
+
+            if (dot && textElement) {
+                dot.classList.remove('connected', 'error', 'loading');
+                if (status !== 'waiting') {
+                    dot.classList.add(status);
+                }
+                textElement.textContent = text;
+            }
+        }
+
+        function updateLastUpdated(text) {
+            const element = document.getElementById('last-updated');
+            if (element) {
+                element.querySelector('span').textContent = text;
+            }
+        }
+
+        // ===== 載入和錯誤顯示函數 =====
+        function showPriceLoading() {
+            const display = document.getElementById('price-display');
+            display.innerHTML = `
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <span>正在載入黃金價格...</span>
+                </div>
+            `;
+        }
+
+        function displayNoMarketData() {
+            const display = document.getElementById('market-data-display');
+            display.innerHTML = `
+                <div class="no-data">
+                    <i class="fas fa-chart-bar"></i>
+                    <h3>等待市場數據</h3>
+                    <p>請確認 N8N 工作流程已正確運行並發送數據</p>
+                    <button onclick="loadMarketData()" class="retry-btn">
+                        <i class="fas fa-refresh"></i>
+                        重新載入
+                    </button>
+                </div>
+            `;
+        }
+
+        function displayMarketError(message) {
+            const display = document.getElementById('market-data-display');
+            display.innerHTML = `
+                <div class="error-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>數據載入失敗</h3>
+                    <p>${message}</p>
+                    <button onclick="loadMarketData()" class="retry-btn">
+                        <i class="fas fa-refresh"></i>
+                        重試
+                    </button>
+                </div>
+            `;
+        }
+
+        function displayPriceError(message) {
+            const display = document.getElementById('price-display');
+            display.innerHTML = `
+                <div class="error-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>價格載入失敗</h3>
+                    <p>${message}</p>
+                    <button onclick="loadGoldPrice(currentPeriod, true)" class="retry-btn">
+                        <i class="fas fa-refresh"></i>
+                        重試
+                    </button>
+                </div>
+            `;
+        }
+
+        // ===== 輔助函數 =====
+        function getSentimentClass(score) {
+            if (score > 0.1) return 'positive';
+            if (score < -0.1) return 'negative';
+            return 'neutral';
+        }
+
+        function getSentimentText(score) {
+            if (score > 0.6) return '極度樂觀';
+            if (score > 0.3) return '樂觀';
+            if (score > 0.1) return '略為樂觀';
+            if (score > -0.1) return '中性';
+            if (score > -0.3) return '略為悲觀';
+            if (score > -0.6) return '悲觀';
+            return '極度悲觀';
+        }
+
+        function getMarketStatusText(status) {
+            const statusMap = {
+                'open': '開市',
+                'closed': '休市',
+                'unknown': '未知'
+            };
+            return statusMap[status] || status;
+        }
+
+        function getRSIStatus(rsi) {
+            if (rsi > 70) return '(超買)';
+            if (rsi < 30) return '(超賣)';
+            return '(正常)';
+        }
+
+        function calculateStandardDeviation(values) {
+            const avg = values.reduce((a, b) => a + b) / values.length;
+            const squareDiffs = values.map(value => Math.pow(value - avg, 2));
+            const avgSquareDiff = squareDiffs.reduce((a, b) => a + b) / squareDiffs.length;
+            return Math.sqrt(avgSquareDiff);
+        }
+
+        // ===== 按鈕操作函數 =====
+        function refreshAllData() {
+            console.log('🔄 刷新所有數據');
+            const refreshBtn = document.getElementById('refresh-btn');
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>刷新中...</span>';
+            }
+
+            Promise.all([
+                loadMarketData(),
+                loadGoldPrice(currentPeriod, true)
+            ]).finally(() => {
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
+                    refreshBtn.innerHTML = '<i class="fas fa-sync"></i><span>刷新數據</span>';
+                }
+            });
+        }
+
+        function toggleTechnicalIndicators() {
+            const indicators = document.getElementById('technical-indicators');
+            const toggleBtn = document.getElementById('indicator-toggle');
+
+            if (indicators) {
+                indicatorsVisible = !indicatorsVisible;
+                indicators.style.display = indicatorsVisible ? 'block' : 'none';
+
+                if (toggleBtn) {
+                    toggleBtn.innerHTML = indicatorsVisible ?
+                        '<i class="fas fa-eye-slash"></i><span>隱藏技術指標</span>' :
+                        '<i class="fas fa-eye"></i><span>顯示技術指標</span>';
+                }
+            }
+        }
+
+        function toggleDataDetails() {
+            const details = document.getElementById('data-details');
+            const toggleBtn = document.getElementById('details-toggle');
+
+            if (details) {
+                detailsVisible = !detailsVisible;
+                details.style.display = detailsVisible ? 'block' : 'none';
+
+                if (toggleBtn) {
+                    toggleBtn.innerHTML = detailsVisible ?
+                        '<i class="fas fa-eye-slash"></i><span>隱藏詳情</span>' :
+                        '<i class="fas fa-eye"></i><span>顯示詳情</span>';
+                }
+
+                // 如果顯示詳情且有數據，更新日誌
+                if (detailsVisible && goldPriceData) {
+                    updateDetailedLogs({ data: goldPriceData });
+                }
+            }
+        }
+
+        function toggleMarketContent() {
+            const content = document.getElementById('market-content');
+            const isExpanded = content.style.maxHeight === 'none';
+
+            content.style.maxHeight = isExpanded ? '200px' : 'none';
+            content.style.overflow = isExpanded ? 'hidden' : 'visible';
+
+            const btn = content.nextElementSibling;
+            if (btn && btn.classList.contains('expand-btn')) {
+                btn.textContent = isExpanded ? '展開全文' : '收起';
+            }
+        }
+
+        // ===== 錯誤處理 =====
+        window.addEventListener('error', (e) => {
+            console.error('JavaScript 錯誤:', e.error);
+        });
+
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('未處理的 Promise 拒絕:', e.reason);
+        });
+
+        console.log('✅ 市場分析系統腳本載入完成');
     </script>
+
+    <style>
+        /* 詳細日誌樣式 */
+        .data-details-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .log-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--bg-glass);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        .log-section h4 {
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .log-content {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .log-content p {
+            margin-bottom: 0.5rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+        }
+
+        .log-content strong {
+            color: var(--text-primary);
+        }
+
+        .status-success {
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .data-table {
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+
+        .data-table table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table th {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-weight: bold;
+        }
+
+        .data-table td {
+            color: var(--text-secondary);
+        }
+
+        .data-table tr:hover {
+            background: var(--bg-glass);
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .data-table {
+                font-size: 0.8rem;
+            }
+
+            .data-table th,
+            .data-table td {
+                padding: 0.5rem;
+            }
+        }
+    </style>
 </body>
 </html>

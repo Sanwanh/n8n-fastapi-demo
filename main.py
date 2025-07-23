@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 市場分析報告系統 - API服務 (修正版)
-Market Analysis Report System - Fixed API Service
+主要修正：
+1. 修正市場數據顯示問題
+2. 增強錯誤處理和日誌
+3. 確保數據正確傳遞到前端
 """
 
 import os
@@ -31,10 +34,14 @@ except ImportError as e:
     print("請執行: pip install -r requirements.txt")
     sys.exit(1)
 
-# 設定日誌
+# 設定日誌 - 增強版本
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('logs/market_analysis.log', encoding='utf-8')
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -62,7 +69,7 @@ def load_config():
         },
         'SYSTEM_INFO': {
             'name': 'Market Analysis API',
-            'version': '2.1.1',
+            'version': '2.1.2',
             'description': '智能市場分析API服務 - 修正版'
         }
     }
@@ -142,111 +149,194 @@ async def mail_page():
     return HTMLResponse(content="<h1>郵件頁面檔案不存在</h1>", status_code=404)
 
 
-# 全域變數
+# 全域變數 - 增強版本
 stored_data = {}
 system_stats = {
     "total_reports": 0,
     "today_reports": 0,
     "last_reset": datetime.now().date(),
-    "uptime_start": datetime.now()
+    "uptime_start": datetime.now(),
+    "last_data_received": None,
+    "api_calls": 0,
+    "gold_price_calls": 0,
+    "errors": 0
 }
 
 
 # API 路由
 @app.post("/api/n8n-data")
 async def receive_n8n_data(request: Request):
-    """接收來自 N8N 的市場分析資料"""
+    """接收來自 N8N 的市場分析資料 - 增強版本"""
     try:
         global stored_data, system_stats
 
         raw_data = await request.json()
-        logger.info(f"收到 N8N 資料: {json.dumps(raw_data, ensure_ascii=False)[:200]}...")
+        logger.info(f"📨 收到 N8N 原始資料大小: {len(json.dumps(raw_data, ensure_ascii=False))} 字元")
+        logger.info(f"📨 收到 N8N 資料: {json.dumps(raw_data, ensure_ascii=False)[:500]}...")
 
+        # 增強的數據處理邏輯
         if isinstance(raw_data, list) and len(raw_data) > 0:
             market_data = raw_data[0]
+            logger.info("✅ 處理陣列格式數據，取第一個元素")
         elif isinstance(raw_data, dict):
             market_data = raw_data
+            logger.info("✅ 處理字典格式數據")
         else:
-            raise HTTPException(status_code=400, detail="無效的資料格式")
+            logger.error(f"❌ 無效的資料格式: {type(raw_data)}")
+            raise HTTPException(status_code=400, detail=f"無效的資料格式: {type(raw_data)}")
 
+        # 詳細記錄接收到的數據欄位
+        logger.info(f"📊 數據欄位: {list(market_data.keys())}")
+
+        # 構建儲存的數據
+        current_time = datetime.now()
         stored_data = {
-            "average_sentiment_score": market_data.get("average_sentiment_score", 0),
-            "message_content": market_data.get("message_content", ""),
-            "market_date": market_data.get("market_date", datetime.now().strftime("%Y年%m月%d日")),
-            "confidence_level": market_data.get("confidence_level", "未知"),
-            "trend_direction": market_data.get("trend_direction", "未知"),
-            "risk_assessment": market_data.get("risk_assessment", "未知"),
-            "received_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "raw_data": market_data
+            "average_sentiment_score": float(market_data.get("average_sentiment_score", 0)),
+            "message_content": str(market_data.get("message_content", "")),
+            "market_date": str(market_data.get("market_date", current_time.strftime("%Y年%m月%d日"))),
+            "confidence_level": str(market_data.get("confidence_level", "未知")),
+            "trend_direction": str(market_data.get("trend_direction", "未知")),
+            "risk_assessment": str(market_data.get("risk_assessment", "未知")),
+            "received_time": current_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "received_timestamp": current_time.isoformat(),
+            "raw_data": market_data,
+            "data_source": "N8N Webhook",
+            "processing_time": datetime.now().isoformat()
         }
 
+        # 更新系統統計
         system_stats["total_reports"] += 1
         system_stats["today_reports"] += 1
+        system_stats["last_data_received"] = current_time.isoformat()
 
-        logger.info(f"✅ 成功儲存 N8N 資料")
+        # 詳細記錄處理後的數據
+        logger.info(f"✅ 成功處理 N8N 資料:")
+        logger.info(f"   情感分數: {stored_data['average_sentiment_score']}")
+        logger.info(f"   內容長度: {len(stored_data['message_content'])} 字元")
+        logger.info(f"   市場日期: {stored_data['market_date']}")
+        logger.info(f"   信心水平: {stored_data['confidence_level']}")
+        logger.info(f"   趨勢方向: {stored_data['trend_direction']}")
+        logger.info(f"   風險評估: {stored_data['risk_assessment']}")
+        logger.info(f"   接收時間: {stored_data['received_time']}")
 
         return {
             "status": "success",
             "message": "市場分析資料已接收並儲存",
-            "data": stored_data
+            "data": stored_data,
+            "received_at": current_time.isoformat(),
+            "processed_fields": len(stored_data),
+            "system_stats": system_stats
         }
 
+    except ValueError as ve:
+        logger.error(f"❌ 數據驗證錯誤: {str(ve)}")
+        system_stats["errors"] += 1
+        raise HTTPException(status_code=400, detail=f"數據驗證錯誤: {str(ve)}")
     except Exception as e:
         logger.error(f"❌ 接收 N8N 資料失敗: {str(e)}")
+        system_stats["errors"] += 1
         raise HTTPException(status_code=500, detail=f"接收資料失敗: {str(e)}")
 
 
 @app.get("/api/current-data")
 async def get_current_data():
-    """取得目前儲存的市場分析資料"""
-    return {
-        "status": "success",
-        "data": stored_data,
-        "stats": system_stats,
-        "timestamp": datetime.now().isoformat()
-    }
+    """取得目前儲存的市場分析資料 - 增強版本"""
+    try:
+        system_stats["api_calls"] += 1
+
+        logger.info(f"📤 API 請求 /api/current-data")
+        logger.info(f"📊 當前儲存數據狀態: {'有數據' if stored_data else '無數據'}")
+
+        if stored_data:
+            logger.info(f"📊 數據詳情:")
+            logger.info(f"   情感分數: {stored_data.get('average_sentiment_score', 'N/A')}")
+            logger.info(f"   內容長度: {len(stored_data.get('message_content', ''))} 字元")
+            logger.info(f"   接收時間: {stored_data.get('received_time', 'N/A')}")
+
+        # 檢查數據是否過期（超過1小時）
+        data_age_minutes = 0
+        if stored_data and stored_data.get('received_timestamp'):
+            try:
+                received_time = datetime.fromisoformat(stored_data['received_timestamp'])
+                data_age_minutes = (datetime.now() - received_time).total_seconds() / 60
+                logger.info(f"📅 數據年齡: {data_age_minutes:.1f} 分鐘")
+            except Exception as e:
+                logger.warning(f"⚠️ 無法計算數據年齡: {e}")
+
+        response_data = {
+            "status": "success",
+            "data": stored_data,
+            "stats": system_stats,
+            "timestamp": datetime.now().isoformat(),
+            "has_data": len(stored_data) > 0,
+            "data_age_minutes": data_age_minutes,
+            "data_freshness": "fresh" if data_age_minutes < 60 else "stale" if data_age_minutes < 1440 else "very_old"
+        }
+
+        logger.info(f"✅ 回傳數據: {len(stored_data)} 個欄位")
+        return response_data
+
+    except Exception as e:
+        logger.error(f"❌ 取得當前數據失敗: {str(e)}")
+        system_stats["errors"] += 1
+        raise HTTPException(status_code=500, detail=f"取得數據失敗: {str(e)}")
 
 
 @app.get("/api/gold-price")
 async def get_gold_price(period: str = "1y", interval: str = "1d"):
-    """取得黃金期貨價格 - 整合你的優秀代碼邏輯"""
+    """取得黃金期貨價格 - 增強版本"""
     try:
+        system_stats["gold_price_calls"] += 1
+
         # 驗證參數
         valid_periods = ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y"]
         valid_intervals = ["1m", "5m", "15m", "30m", "1h", "1d"]
 
         if period not in valid_periods:
-            logger.warning(f"無效的時間期間: {period}，使用預設值")
+            logger.warning(f"無效的時間期間: {period}，使用預設值 1y")
             period = "1y"
 
         if interval not in valid_intervals:
-            logger.warning(f"無效的時間間隔: {interval}，使用預設值")
+            logger.warning(f"無效的時間間隔: {interval}，使用預設值 1d")
             interval = "1d"
 
-        logger.info(f"🔍 正在獲取黃金期貨數據 - 期間: {period}, 間隔: {interval}")
+        logger.info(f"🔍 開始獲取黃金期貨數據")
+        logger.info(f"   期間: {period}")
+        logger.info(f"   間隔: {interval}")
+        logger.info(f"   請求時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-        # 使用你的代碼邏輯獲取黃金期貨數據
+        # 獲取黃金期貨數據
         try:
             hist_data, info, current_price = await get_gold_futures_data_enhanced(period, interval)
 
             if hist_data is None or hist_data.empty:
-                logger.warning("主要數據源無數據，使用備選方案...")
+                logger.warning("⚠️ 主要數據源無數據，使用備選方案...")
                 return create_mock_gold_data(period)
 
         except Exception as e:
-            logger.error(f"yfinance 數據獲取失敗: {str(e)}")
+            logger.error(f"❌ yfinance 數據獲取失敗: {str(e)}")
             return create_mock_gold_data(period)
 
-        logger.info(f"✅ 成功獲取 {len(hist_data)} 個數據點")
+        logger.info(f"✅ 成功獲取黃金數據:")
+        logger.info(f"   數據點數量: {len(hist_data)}")
+        logger.info(
+            f"   日期範圍: {hist_data.index[0].strftime('%Y-%m-%d')} 到 {hist_data.index[-1].strftime('%Y-%m-%d')}")
 
-        # 使用你的統計計算邏輯
+        # 計算統計數據
         stats = calculate_gold_statistics(hist_data)
 
         if not stats:
-            logger.warning("統計計算失敗，使用備選數據")
+            logger.warning("⚠️ 統計計算失敗，使用備選數據")
             return create_mock_gold_data(period)
 
-        # 準備圖表數據 - 使用完整的數據結構
+        logger.info(f"💰 價格統計:")
+        logger.info(f"   當前價格: ${stats['current_price']:.2f}")
+        logger.info(f"   價格變化: ${stats['price_change']:+.2f} ({stats['price_change_pct']:+.2f}%)")
+        logger.info(f"   價格範圍: ${stats['min_price']:.2f} - ${stats['max_price']:.2f}")
+        logger.info(f"   平均價格: ${stats['avg_price']:.2f}")
+        logger.info(f"   波動率: {stats['volatility']:.2f}")
+
+        # 準備圖表數據
         chart_data = []
         for idx, row in hist_data.iterrows():
             try:
@@ -260,22 +350,28 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
                 }
                 chart_data.append(data_point)
             except Exception as point_error:
-                logger.warning(f"處理數據點時出錯: {point_error}")
+                logger.warning(f"⚠️ 處理數據點時出錯: {point_error}")
                 continue
 
-        # 計算技術指標 - 使用更穩健的方法
+        logger.info(f"📊 圖表數據:")
+        logger.info(f"   有效數據點: {len(chart_data)}")
+        if chart_data:
+            prices = [d['price'] for d in chart_data]
+            logger.info(f"   價格範圍: ${min(prices):.2f} - ${max(prices):.2f}")
+
+        # 計算技術指標
         technical_indicators = calculate_technical_indicators_enhanced(hist_data)
+        logger.info(f"📈 技術指標: {list(technical_indicators.keys())}")
 
-        # 判斷市場狀態 - 改進邏輯
+        # 判斷市場狀態
         market_status = determine_market_status()
+        logger.info(f"🏪 市場狀態: {market_status}")
 
-        # 獲取市場資訊 - 整合你的 info 邏輯
+        # 獲取市場資訊
         market_name = get_market_name(info)
 
-        logger.info(
-            f"💰 黃金價格: ${stats['current_price']:.2f} (變化: {stats['price_change']:+.2f}, {stats['price_change_pct']:+.2f}%)")
-
-        return {
+        # 準備回應數據
+        response_data = {
             "status": "success",
             "data": {
                 "symbol": "GC=F",
@@ -285,8 +381,8 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
                 "change_percent": round(stats['price_change_pct'], 2),
                 "high_24h": round(stats['max_price'], 2),
                 "low_24h": round(stats['min_price'], 2),
-                "avg_price": round(stats['avg_price'], 2),  # 你的代碼特有
-                "volatility": round(stats['volatility'], 2),  # 你的代碼特有
+                "avg_price": round(stats['avg_price'], 2),
+                "volatility": round(stats['volatility'], 2),
                 "volume_24h": int(hist_data['Volume'].sum()) if not hist_data['Volume'].isna().all() else 0,
                 "currency": "USD",
                 "unit": "per ounce",
@@ -297,7 +393,7 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
                 "period": period,
                 "interval": interval,
                 "data_points": len(chart_data),
-                "trading_days": len(hist_data),  # 額外統計
+                "trading_days": len(hist_data),
                 "data_source_info": {
                     "primary": "Yahoo Finance",
                     "realtime_updated": len(chart_data) > 0 and
@@ -306,20 +402,31 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
             },
             "system_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "next_update": (datetime.now() + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S"),
-            "data_source": "Yahoo Finance API (Enhanced)"
+            "data_source": "Yahoo Finance API (Enhanced)",
+            "processing_stats": {
+                "raw_data_points": len(hist_data),
+                "processed_chart_points": len(chart_data),
+                "technical_indicators_count": len(technical_indicators),
+                "processing_time": datetime.now().isoformat()
+            }
         }
+
+        logger.info(f"✅ 成功回傳黃金價格數據:")
+        logger.info(f"   回應大小: {len(json.dumps(response_data))} 字元")
+        logger.info(f"   圖表數據點: {len(chart_data)}")
+
+        return response_data
 
     except Exception as e:
         logger.error(f"❌ 獲取黃金價格失敗: {str(e)}")
+        system_stats["errors"] += 1
         return create_mock_gold_data(period)
 
 
 async def get_gold_futures_data_enhanced(period: str, interval: str):
-    """
-    整合你的優秀黃金期貨數據獲取邏輯
-    """
+    """獲取黃金期貨數據 - 增強版本"""
     try:
-        # 計算時間範圍 - 使用你的邏輯
+        # 計算時間範圍
         period_days_map = {
             '1d': 1, '5d': 5, '1mo': 30, '3mo': 90,
             '6mo': 180, '1y': 365, '2y': 730, '5y': 1825
@@ -329,44 +436,44 @@ async def get_gold_futures_data_enhanced(period: str, interval: str):
         end_date = datetime.now()
         start_date = end_date - timedelta(days=period_days)
 
-        logger.info(f"正在獲取黃金期貨數據...")
-        logger.info(f"代碼: GC=F")
-        logger.info(f"時間範圍: {start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}")
+        logger.info(f"🕐 時間範圍: {start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}")
 
-        # 使用yfinance獲取數據 - 你的方法
+        # 使用yfinance獲取數據
         gold_ticker = yf.Ticker("GC=F")
 
-        # 先獲取日線數據（指定期間）
+        # 獲取歷史數據
+        logger.info(f"📊 正在獲取歷史數據...")
         hist_data = gold_ticker.history(
             start=start_date.strftime('%Y-%m-%d'),
             end=end_date.strftime('%Y-%m-%d'),
             interval=interval
         )
 
-        # 嘗試獲取當天的分鐘級數據（最近2天） - 你的邏輯
+        logger.info(f"📊 獲取到 {len(hist_data)} 筆歷史數據")
+
+        # 嘗試獲取當天的分鐘級數據
         try:
-            logger.info("正在獲取當天詳細數據...")
+            logger.info("🔄 正在獲取當天詳細數據...")
             recent_data = gold_ticker.history(
                 period='2d',
                 interval='1m'
             )
 
             if not recent_data.empty:
-                # 取得今天的數據
                 today = datetime.now().date()
                 today_data = recent_data[recent_data.index.date >= today]
 
                 if not today_data.empty:
-                    # 用今天的最新數據更新收盤價 - 你的邏輯
                     latest_price = today_data['Close'].iloc[-1]
                     latest_time = today_data.index[-1]
 
-                    # 將今天的數據合併到歷史數據中 - 你的邏輯
+                    logger.info(f"📊 今日數據: {len(today_data)} 筆，最新價格: ${latest_price:.2f}")
+
+                    # 更新歷史數據中的最新價格
                     if len(hist_data) > 0:
-                        # 更新最後一天的數據
                         last_date = hist_data.index[-1].date()
                         if last_date == today:
-                            # 如果今天已有數據，更新它 - 你的邏輯
+                            # 更新今天的數據
                             hist_data.loc[hist_data.index[-1], 'Close'] = latest_price
                             hist_data.loc[hist_data.index[-1], 'High'] = max(
                                 hist_data.loc[hist_data.index[-1], 'High'], latest_price
@@ -374,8 +481,9 @@ async def get_gold_futures_data_enhanced(period: str, interval: str):
                             hist_data.loc[hist_data.index[-1], 'Low'] = min(
                                 hist_data.loc[hist_data.index[-1], 'Low'], latest_price
                             )
+                            logger.info("✅ 已更新今日數據")
                         else:
-                            # 添加今天的數據 - 你的邏輯
+                            # 添加今天的數據
                             new_row = pd.DataFrame({
                                 'Open': [today_data['Open'].iloc[0]],
                                 'High': [today_data['High'].max()],
@@ -384,43 +492,44 @@ async def get_gold_futures_data_enhanced(period: str, interval: str):
                                 'Volume': [today_data['Volume'].sum()]
                             }, index=[latest_time.replace(hour=0, minute=0, second=0, microsecond=0)])
                             hist_data = pd.concat([hist_data, new_row])
+                            logger.info("✅ 已添加今日數據")
 
-                    logger.info(f"成功獲取當天數據，最新時間: {latest_time.strftime('%Y-%m-%d %H:%M')}")
+                    logger.info(f"✅ 當天數據處理完成，最新時間: {latest_time.strftime('%Y-%m-%d %H:%M')}")
                 else:
-                    logger.info("當天暫無交易數據")
+                    logger.info("ℹ️ 當天暫無交易數據")
             else:
-                logger.info("無法獲取當天詳細數據，使用日線數據")
+                logger.info("ℹ️ 無法獲取當天詳細數據")
 
         except Exception as e:
-            logger.warning(f"獲取當天數據時出現問題: {e}，使用日線數據")
+            logger.warning(f"⚠️ 獲取當天數據時出現問題: {e}")
 
         if hist_data.empty:
             raise ValueError("無法獲取數據，請檢查網路連接或API狀態")
 
-        # 獲取最新價格資訊 - 你的邏輯
+        # 獲取市場資訊
         info = None
         try:
             info = gold_ticker.info
+            logger.info(f"📋 獲取市場資訊: {info.get('longName', 'N/A') if info else 'N/A'}")
         except Exception as info_error:
-            logger.warning(f"無法獲取市場資訊: {info_error}")
+            logger.warning(f"⚠️ 無法獲取市場資訊: {info_error}")
 
         current_price = hist_data['Close'].iloc[-1] if not hist_data.empty else None
 
-        logger.info(f"成功獲取 {len(hist_data)} 天的數據")
-        logger.info(f"最新價格: ${current_price:.2f} USD/oz")
-        logger.info(f"數據最後更新: {hist_data.index[-1].strftime('%Y-%m-%d %H:%M')}")
+        logger.info(f"✅ 數據獲取完成:")
+        logger.info(f"   最終數據點數: {len(hist_data)}")
+        logger.info(f"   最新價格: ${current_price:.2f}")
+        logger.info(f"   最後更新: {hist_data.index[-1].strftime('%Y-%m-%d %H:%M')}")
 
         return hist_data, info, current_price
 
     except Exception as e:
-        logger.error(f"獲取數據時發生錯誤: {e}")
+        logger.error(f"❌ 獲取數據時發生錯誤: {e}")
         return None, None, None
 
 
 def calculate_gold_statistics(data):
-    """
-    使用你的統計計算邏輯
-    """
+    """計算黃金統計數據"""
     if data is None or data.empty:
         return {}
 
@@ -438,16 +547,15 @@ def calculate_gold_statistics(data):
             'latest_date': close_prices.index[-1]
         }
 
+        logger.info(f"📊 統計計算完成: 當前=${stats['current_price']:.2f}, 變化={stats['price_change']:+.2f}")
         return stats
     except Exception as e:
-        logger.error(f"統計計算失敗: {e}")
+        logger.error(f"❌ 統計計算失敗: {e}")
         return {}
 
 
 def calculate_technical_indicators_enhanced(hist_data):
-    """
-    計算技術指標 - 增強版本
-    """
+    """計算技術指標 - 增強版本"""
     technical_indicators = {}
 
     try:
@@ -476,31 +584,67 @@ def calculate_technical_indicators_enhanced(hist_data):
             technical_indicators["price_vs_ma20"] = float(
                 (close_prices.iloc[-1] / technical_indicators["ma_20"] - 1) * 100)
 
+        logger.info(f"📈 技術指標計算完成: {len(technical_indicators)} 個指標")
+
     except Exception as e:
-        logger.warning(f"技術指標計算錯誤: {e}")
+        logger.warning(f"⚠️ 技術指標計算錯誤: {e}")
 
     return technical_indicators
 
 
+def calculate_rsi(prices, periods=14):
+    """計算 RSI 技術指標"""
+    try:
+        if len(prices) < periods + 1:
+            return None
+
+        prices = np.array(prices, dtype=float)
+        prices = prices[~np.isnan(prices)]
+
+        if len(prices) < periods + 1:
+            return None
+
+        deltas = np.diff(prices)
+
+        if len(deltas) < periods:
+            return None
+
+        up_moves = np.where(deltas > 0, deltas, 0)
+        down_moves = np.where(deltas < 0, -deltas, 0)
+
+        if len(up_moves) >= periods and len(down_moves) >= periods:
+            avg_up = np.mean(up_moves[-periods:])
+            avg_down = np.mean(down_moves[-periods:])
+
+            if avg_down == 0:
+                return 100.0
+
+            rs = avg_up / avg_down
+            rsi = 100 - (100 / (1 + rs))
+            return round(float(rsi), 1)
+
+        return None
+
+    except Exception as e:
+        logger.warning(f"⚠️ RSI 計算錯誤: {e}")
+        return None
+
+
 def determine_market_status():
-    """
-    判斷市場狀態 - 改進版本
-    """
+    """判斷市場狀態"""
     try:
         now = datetime.now()
-        # 美國市場時間考慮 (EST/EDT)
-        # 黃金期貨交易時間: 週日晚上到週五下午
         weekday = now.weekday()  # 0=Monday, 6=Sunday
         hour = now.hour
 
         # 簡化的市場開放邏輯
         if weekday < 5:  # Monday to Friday
-            if 18 <= hour or hour <= 17:  # 大部分時間開市
+            if 18 <= hour or hour <= 17:
                 return "open"
             else:
                 return "closed"
         elif weekday == 6:  # Sunday
-            if hour >= 18:  # Sunday evening
+            if hour >= 18:
                 return "open"
 
         return "closed"
@@ -509,57 +653,14 @@ def determine_market_status():
 
 
 def get_market_name(info):
-    """
-    獲取市場名稱
-    返回 info['longName'] 或默認 'Gold Futures (GC=F)'
-    """
+    """獲取市場名稱"""
     try:
         if isinstance(info, dict) and info:
             return info.get('longName', 'Gold Futures (GC=F)')
         return 'Gold Futures (GC=F)'
     except Exception as e:
-        logger.error(f"獲取市場名稱失敗: {e}")
+        logger.error(f"❌ 獲取市場名稱失敗: {e}")
         return 'Gold Futures (GC=F)'
-
-
-def get_gold_data(period):
-    """
-    根據給定的時間週期 period，從 Yahoo Finance 獲取並處理黃金價格數據。
-    如果發生任何錯誤，將返回模擬數據。
-    """
-    try:
-        # TODO: 在此添加實際的數據抓取和處理邏輯
-        # 例如：調用 Yahoo Finance API，生成 chart_data、market_status、technical_indicators 等
-
-        # 範例佔位數據 (請替換為真實邏輯)
-        chart_data = []  # 實際的圖表數據列表
-        market_status = 'open'  # 或 'closed'
-        technical_indicators = {}  # 計算得到的技術指標
-        interval = period  # 或其他邏輯
-
-        data = {
-            "currency": "USD",
-            "unit": "per ounce",
-            "last_updated": datetime.now().isoformat(),
-            "chart_data": chart_data,
-            "market_status": market_status,
-            "technical_indicators": technical_indicators,
-            "period": period,
-            "interval": interval,
-            "data_points": len(chart_data)
-        }
-        result = {
-            "data": data,
-            "system_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "next_update": (datetime.now() + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S"),
-            "data_source": "Yahoo Finance API"
-        }
-        return result
-
-    except Exception as e:
-        logger.error(f"❌ 獲取或處理黃金價格失敗: {str(e)}")
-        # 返回模擬數據而不是拋出異常，確保前端能正常顯示
-        return create_mock_gold_data(period)
 
 
 def create_mock_gold_data(period: str):
@@ -573,12 +674,8 @@ def create_mock_gold_data(period: str):
 
     # 根據時間期間生成模擬圖表數據
     period_days = {
-        '1d': 1,
-        '5d': 5,
-        '1mo': 30,
-        '3mo': 90,
-        '6mo': 180,
-        '1y': 365
+        '1d': 1, '5d': 5, '1mo': 30, '3mo': 90,
+        '6mo': 180, '1y': 365
     }
 
     days = period_days.get(period, 365)
@@ -598,6 +695,8 @@ def create_mock_gold_data(period: str):
             "volume": np.random.randint(1000, 10000)
         })
 
+    logger.info(f"🔧 生成模擬數據: {len(chart_data)} 個數據點")
+
     return {
         "status": "success",
         "data": {
@@ -608,6 +707,8 @@ def create_mock_gold_data(period: str):
             "change_percent": round(change_percent, 2),
             "high_24h": round(current_price * 1.015, 2),
             "low_24h": round(current_price * 0.985, 2),
+            "avg_price": round(base_price, 2),
+            "volatility": round(np.random.uniform(10, 50), 2),
             "volume_24h": np.random.randint(50000, 200000),
             "currency": "USD",
             "unit": "per ounce",
@@ -621,54 +722,13 @@ def create_mock_gold_data(period: str):
             },
             "period": period,
             "interval": "1d",
-            "data_points": len(chart_data)
+            "data_points": len(chart_data),
+            "trading_days": len(chart_data)
         },
         "system_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "next_update": (datetime.now() + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S"),
         "data_source": "Mock Data (Yahoo Finance 不可用)"
     }
-
-
-def calculate_rsi(prices, periods=14):
-    """計算 RSI 技術指標 - 增強版本"""
-    try:
-        if len(prices) < periods + 1:
-            return None
-
-        # 轉換為 numpy 數組並確保是浮點數
-        prices = np.array(prices, dtype=float)
-
-        # 移除 NaN 值
-        prices = prices[~np.isnan(prices)]
-
-        if len(prices) < periods + 1:
-            return None
-
-        deltas = np.diff(prices)
-
-        if len(deltas) < periods:
-            return None
-
-        up_moves = np.where(deltas > 0, deltas, 0)
-        down_moves = np.where(deltas < 0, -deltas, 0)
-
-        # 計算移動平均
-        if len(up_moves) >= periods and len(down_moves) >= periods:
-            avg_up = np.mean(up_moves[-periods:])
-            avg_down = np.mean(down_moves[-periods:])
-
-            if avg_down == 0:
-                return 100.0
-
-            rs = avg_up / avg_down
-            rsi = 100 - (100 / (1 + rs))
-            return round(float(rsi), 1)
-
-        return None
-
-    except Exception as e:
-        logger.warning(f"RSI 計算錯誤: {e}")
-        return None
 
 
 @app.post("/api/send-mail-to-n8n")
@@ -761,7 +821,6 @@ async def health_check():
     # 測試黃金價格 API
     gold_api_status = "healthy"
     try:
-        # 快速測試 yfinance 連接
         import yfinance as yf
         test_ticker = yf.Ticker("GC=F")
         test_data = test_ticker.history(period="1d", interval="1d")
@@ -778,6 +837,7 @@ async def health_check():
         "has_market_data": len(stored_data) > 0,
         "uptime": str(uptime).split('.')[0],
         "environment": os.getenv('ENVIRONMENT', 'development'),
+        "stats": system_stats,
         "features": {
             "gold_price_api": gold_api_status,
             "market_analysis": "healthy",
@@ -855,6 +915,7 @@ async def startup_event():
 # 錯誤處理
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
+    logger.error(f"HTTP異常: {exc.status_code} - {exc.detail}")
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -869,6 +930,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     logger.error(f"未處理的異常: {str(exc)}")
+    system_stats["errors"] += 1
     return JSONResponse(
         status_code=500,
         content={
@@ -885,6 +947,7 @@ def main():
     print(f"🌐 主網站: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}")
     print(f"📧 郵件頁面: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}/mail")
     print(f"📖 API文檔: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}/api/docs")
+    print(f"📊 系統版本: {CONFIG['SYSTEM_INFO']['version']}")
 
     uvicorn.run(
         app,
