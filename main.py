@@ -171,8 +171,8 @@ async def receive_n8n_data(request: Request):
         global stored_data, system_stats
 
         raw_data = await request.json()
-        logger.info(f"📨 收到 N8N 原始資料大小: {len(json.dumps(raw_data, ensure_ascii=False))} 字元")
-        logger.info(f"📨 收到 N8N 資料: {json.dumps(raw_data, ensure_ascii=False)[:500]}...")
+        # logger.info(f"📨 收到 N8N 原始資料大小: {len(json.dumps(raw_data, ensure_ascii=False))} 字元")
+        # logger.info(f"📨 收到 N8N 資料: {json.dumps(raw_data, ensure_ascii=False)[:500]}...")
 
         # 增強的數據處理邏輯
         if isinstance(raw_data, list) and len(raw_data) > 0:
@@ -300,10 +300,10 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
             logger.warning(f"無效的時間間隔: {interval}，使用預設值 1d")
             interval = "1d"
 
-        logger.info(f"🔍 開始獲取黃金期貨數據")
-        logger.info(f"   期間: {period}")
-        logger.info(f"   間隔: {interval}")
-        logger.info(f"   請求時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        # logger.info(f"🔍 開始獲取黃金期貨數據")
+        # logger.info(f"   期間: {period}")
+        # logger.info(f"   間隔: {interval}")
+        # logger.info(f"   請求時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
         # 獲取黃金期貨數據
         try:
@@ -317,10 +317,10 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
             logger.error(f"❌ yfinance 數據獲取失敗: {str(e)}")
             return create_mock_gold_data(period)
 
-        logger.info(f"✅ 成功獲取黃金數據:")
-        logger.info(f"   數據點數量: {len(hist_data)}")
-        logger.info(
-            f"   日期範圍: {hist_data.index[0].strftime('%Y-%m-%d')} 到 {hist_data.index[-1].strftime('%Y-%m-%d')}")
+        # logger.info(f"✅ 成功獲取黃金數據:")
+        # logger.info(f"   數據點數量: {len(hist_data)}")
+        # logger.info(
+        #     f"   日期範圍: {hist_data.index[0].strftime('%Y-%m-%d')} 到 {hist_data.index[-1].strftime('%Y-%m-%d')}")
 
         # 計算統計數據
         stats = calculate_gold_statistics(hist_data)
@@ -378,11 +378,11 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
 
         # 計算技術指標
         technical_indicators = calculate_technical_indicators_enhanced(hist_data)
-        logger.info(f"📈 技術指標: {list(technical_indicators.keys())}")
+        # logger.info(f"📈 技術指標: {list(technical_indicators.keys())}")
 
         # 判斷市場狀態
         market_status = determine_market_status()
-        logger.info(f"🏪 市場狀態: {market_status}")
+        # logger.info(f"🏪 市場狀態: {market_status}")
 
         # 獲取市場資訊
         market_name = get_market_name(info)
@@ -429,9 +429,9 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
             }
         }
 
-        logger.info(f"✅ 成功回傳黃金價格數據:")
-        logger.info(f"   回應大小: {len(json.dumps(response_data))} 字元")
-        logger.info(f"   圖表數據點: {len(chart_data)}")
+        # logger.info(f"✅ 成功回傳黃金價格數據:")
+        # logger.info(f"   回應大小: {len(json.dumps(response_data))} 字元")
+        # logger.info(f"   圖表數據點: {len(chart_data)}")
 
         return response_data
 
@@ -454,20 +454,20 @@ async def get_gold_futures_data_enhanced(period: str, interval: str):
         end_date = datetime.now()
         start_date = end_date - timedelta(days=period_days)
 
-        logger.info(f"🕐 時間範圍: {start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}")
+        # logger.info(f"🕐 時間範圍: {start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}")
 
         # 使用yfinance獲取數據
         gold_ticker = yf.Ticker("GC=F")
 
         # 獲取歷史數據
-        logger.info(f"📊 正在獲取歷史數據...")
+        # logger.info(f"📊 正在獲取歷史數據...")
         hist_data = gold_ticker.history(
             start=start_date.strftime('%Y-%m-%d'),
             end=end_date.strftime('%Y-%m-%d'),
             interval=interval
         )
 
-        logger.info(f"📊 獲取到 {len(hist_data)} 筆歷史數據")
+        # logger.info(f"📊 獲取到 {len(hist_data)} 筆歷史數據")
 
         # 嘗試獲取當天的分鐘級數據
         try:
@@ -485,8 +485,8 @@ async def get_gold_futures_data_enhanced(period: str, interval: str):
                     latest_price = today_data['Close'].iloc[-1]
                     latest_time = today_data.index[-1]
 
-                    logger.info(f"📊 今日數據: {len(today_data)} 筆，最新價格: ${latest_price:.2f}")
-                    logger.info(f"📅 原始時間: {latest_time}")
+                    # logger.info(f"📊 今日數據: {len(today_data)} 筆，最新價格: ${latest_price:.2f}")
+                    # logger.info(f"📅 原始時間: {latest_time}")
 
                     # 更新歷史數據中的最新價格
                     if len(hist_data) > 0:
@@ -500,7 +500,7 @@ async def get_gold_futures_data_enhanced(period: str, interval: str):
                             hist_data.loc[hist_data.index[-1], 'Low'] = min(
                                 hist_data.loc[hist_data.index[-1], 'Low'], latest_price
                             )
-                            logger.info("✅ 已更新今日數據")
+                            # logger.info("✅ 已更新今日數據")
                         else:
                             # 添加今天的數據
                             new_row = pd.DataFrame({
@@ -511,7 +511,7 @@ async def get_gold_futures_data_enhanced(period: str, interval: str):
                                 'Volume': [today_data['Volume'].sum()]
                             }, index=[latest_time.replace(hour=0, minute=0, second=0, microsecond=0)])
                             hist_data = pd.concat([hist_data, new_row])
-                            logger.info("✅ 已添加今日數據")
+                            # logger.info("✅ 已添加今日數據")
 
                     # 修正時區問題，轉換為台北時間 (+8)
                     if hasattr(latest_time, 'tz_localize'):
@@ -527,7 +527,7 @@ async def get_gold_futures_data_enhanced(period: str, interval: str):
                         latest_time_local = latest_time + timedelta(hours=8)
                     
                     latest_time_formatted = latest_time_local.strftime('%Y-%m-%d %H:%M')
-                    logger.info(f"✅ 當天數據處理完成，最新時間: {latest_time_formatted}")
+                    # logger.info(f"✅ 當天數據處理完成，最新時間: {latest_time_formatted}")
                 else:
                     logger.info("ℹ️ 當天暫無交易數據")
             else:
