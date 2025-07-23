@@ -8,6 +8,7 @@ email-validator>=2.0.0
 
 # HTTP 客戶端 HTTP Client
 requests>=2.31.0
+httpx>=0.24.0
 
 # 金融數據 Financial Data
 yfinance>=0.2.20
