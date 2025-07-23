@@ -21,7 +21,7 @@
 
     --bg-primary: #0f172a;
     --bg-secondary: #1e293b;
-    --bg-card: rgba(30, 41, 59, 0.9);
+    --bg-card: rgba(30, 41, 59, 0.95);
     --bg-glass: rgba(255, 255, 255, 0.08);
     --bg-glass-strong: rgba(255, 255, 255, 0.12);
 
@@ -229,41 +229,6 @@ body {
 
 .nav-link:hover {
     background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(59, 130, 246, 0.3));
-    border-color: var(--primary);
-    color: var(--primary-light);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.3);
-}
-
-.nav-link i {
-    font-size: 1.1rem;
-    transition: var(--transition);
-}
-
-.nav-link:hover i {
-    transform: scale(1.1);
-}
-
-/* 特殊樣式的導航連結 */
-.nav-link.mail-link {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.15));
-    border-color: rgba(16, 185, 129, 0.2);
-}
-
-.nav-link.mail-link:hover {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3));
-    border-color: var(--success);
-    color: var(--success);
-    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
-}
-
-.nav-link.docs-link {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.15));
-    border-color: rgba(245, 158, 11, 0.2);
-}
-
-.nav-link.docs-link:hover {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.3));
     border-color: var(--warning);
     color: var(--warning);
     box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
@@ -386,20 +351,6 @@ body {
     color: var(--text-secondary);
     max-width: 600px;
     margin: 0 auto 1.5rem;
-}
-
-.last-updated {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    background: var(--bg-glass);
-    border-radius: var(--radius-full);
-    border: 1px solid var(--border);
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-    font-family: 'Monaco', 'Menlo', monospace;
 }
 
 /* 卡片樣式增強 */
@@ -857,6 +808,7 @@ body {
     font-weight: 700;
     font-size: 0.95rem;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
 }
 
 .sentiment-positive {
@@ -1280,18 +1232,39 @@ body {
 
 .card:nth-child(3) {
     animation-delay: 0.4s;
+}--primary);
+    color: var(--primary-light);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.3);
 }
 
-/* 特殊效果 */
-.glow-gold {
-    animation: glow-gold 2s ease-in-out infinite alternate;
+.nav-link i {
+    font-size: 1.1rem;
+    transition: var(--transition);
 }
 
-@keyframes glow-gold {
-    from {
-        box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
-    }
-    to {
-        box-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
-    }
+.nav-link:hover i {
+    transform: scale(1.1);
 }
+
+/* 特殊樣式的導航連結 */
+.nav-link.mail-link {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.15));
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.nav-link.mail-link:hover {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3));
+    border-color: var(--success);
+    color: var(--success);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+}
+
+.nav-link.docs-link {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.15));
+    border-color: rgba(245, 158, 11, 0.2);
+}
+
+.nav-link.docs-link:hover {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.3));
+    border-color: var(

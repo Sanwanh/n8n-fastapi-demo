@@ -40,10 +40,6 @@
             </div>
             <h1>市場分析郵件發送</h1>
             <p>將最新市場分析數據通過郵件發送給指定收件人</p>
-            <div class="last-updated" id="last-updated">
-                <i class="fas fa-sync"></i>
-                <span>數據更新: --</span>
-            </div>
         </header>
 
         <!-- 主要內容 -->
@@ -70,222 +66,36 @@
                 </div>
             </div>
 
-            <!-- 郵件配置卡片 -->
+            <!-- 簡化的郵件發送表單 -->
             <div class="card mail-form-card">
                 <div class="card-header">
                     <div class="card-icon">
                         <i class="fas fa-envelope"></i>
                     </div>
-                    <h2>郵件設定與發送</h2>
-                    <div class="form-progress" id="form-progress">
-                        <div class="progress-step active" data-step="1">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div class="progress-step" data-step="2">
-                            <i class="fas fa-edit"></i>
-                        </div>
-                        <div class="progress-step" data-step="3">
-                            <i class="fas fa-cog"></i>
-                        </div>
-                        <div class="progress-step" data-step="4">
-                            <i class="fas fa-paper-plane"></i>
-                        </div>
-                    </div>
+                    <h2>郵件發送</h2>
                 </div>
                 <div class="card-content">
-                    <form id="mail-form" class="mail-form">
-                        <!-- 步驟 1: 基本資訊 -->
-                        <div class="form-step active" data-step="1">
-                            <div class="step-header">
-                                <h3><i class="fas fa-user"></i> 收件人資訊</h3>
-                                <p>請輸入郵件收件人的基本資訊</p>
-                            </div>
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label for="recipient">
-                                        <i class="fas fa-envelope"></i>
-                                        收件人郵件地址 *
-                                    </label>
-                                    <input type="email" id="recipient" name="recipient"
-                                           placeholder="example@email.com" required>
-                                    <div class="input-hint">請輸入有效的郵件地址</div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="sender_name">
-                                        <i class="fas fa-signature"></i>
-                                        寄件人名稱
-                                    </label>
-                                    <input type="text" id="sender_name" name="sender_name"
-                                           value="市場分析系統" placeholder="請輸入寄件人名稱">
-                                    <div class="input-hint">將顯示在郵件中的發送者名稱</div>
-                                </div>
-                            </div>
+                    <form id="mail-form" class="simple-mail-form">
+                        <div class="form-group">
+                            <label for="recipient">
+                                <i class="fas fa-envelope"></i>
+                                收件人郵件地址 *
+                            </label>
+                            <input type="email" id="recipient" name="recipient"
+                                   placeholder="example@email.com" required>
                         </div>
 
-                        <!-- 步驟 2: 郵件內容 -->
-                        <div class="form-step" data-step="2">
-                            <div class="step-header">
-                                <h3><i class="fas fa-edit"></i> 郵件內容</h3>
-                                <p>設定郵件主題和自訂內容</p>
-                            </div>
-                            <div class="form-grid">
-                                <div class="form-group full-width">
-                                    <label for="subject">
-                                        <i class="fas fa-heading"></i>
-                                        郵件主旨 *
-                                    </label>
-                                    <input type="text" id="subject" name="subject"
-                                           value="市場分析報告" placeholder="請輸入郵件主旨">
-                                    <div class="input-hint">建議包含日期或時間範圍</div>
-                                </div>
-
-                                <div class="form-group full-width">
-                                    <label for="custom_message">
-                                        <i class="fas fa-comment-alt"></i>
-                                        自訂開頭訊息 <span class="optional">(選填)</span>
-                                    </label>
-                                    <textarea id="custom_message" name="custom_message" rows="4"
-                                             placeholder="請輸入您想要添加到郵件開頭的自訂內容..."></textarea>
-                                    <div class="input-hint">此訊息將顯示在市場分析內容之前</div>
-                                </div>
-
-                                <div class="form-group full-width">
-                                    <label for="mail_type">
-                                        <i class="fas fa-tag"></i>
-                                        郵件類型
-                                    </label>
-                                    <select id="mail_type" name="mail_type" class="form-select">
-                                        <option value="daily">每日報告</option>
-                                        <option value="weekly">週度報告</option>
-                                        <option value="monthly">月度報告</option>
-                                        <option value="alert">市場警示</option>
-                                        <option value="custom">自訂報告</option>
-                                    </select>
-                                </div>
-                            </div>
+                        <div class="form-group">
+                            <label for="custom_message">
+                                <i class="fas fa-comment-alt"></i>
+                                自訂訊息 (選填)
+                            </label>
+                            <textarea id="custom_message" name="custom_message" rows="3"
+                                     placeholder="請輸入您想要添加的自訂內容..."></textarea>
                         </div>
 
-                        <!-- 步驟 3: 郵件選項 -->
-                        <div class="form-step" data-step="3">
-                            <div class="step-header">
-                                <h3><i class="fas fa-cog"></i> 郵件選項</h3>
-                                <p>選擇要包含在郵件中的額外內容</p>
-                            </div>
-                            <div class="options-section">
-                                <div class="option-category">
-                                    <h4>內容選項</h4>
-                                    <div class="options-grid">
-                                        <div class="checkbox-group">
-                                            <input type="checkbox" id="include_charts" name="include_charts" checked>
-                                            <label for="include_charts">
-                                                <span class="checkbox-mark">
-                                                    <i class="fas fa-check"></i>
-                                                </span>
-                                                <span class="checkbox-content">
-                                                    <strong><i class="fas fa-chart-bar"></i> 包含圖表分析</strong>
-                                                    <small>在郵件中附加視覺化圖表和技術分析</small>
-                                                </span>
-                                            </label>
-                                        </div>
-
-                                        <div class="checkbox-group">
-                                            <input type="checkbox" id="include_recommendations" name="include_recommendations" checked>
-                                            <label for="include_recommendations">
-                                                <span class="checkbox-mark">
-                                                    <i class="fas fa-check"></i>
-                                                </span>
-                                                <span class="checkbox-content">
-                                                    <strong><i class="fas fa-lightbulb"></i> 包含投資建議</strong>
-                                                    <small>基於當前市場分析提供相應投資建議</small>
-                                                </span>
-                                            </label>
-                                        </div>
-
-                                        <div class="checkbox-group">
-                                            <input type="checkbox" id="include_risk_warning" name="include_risk_warning" checked>
-                                            <label for="include_risk_warning">
-                                                <span class="checkbox-mark">
-                                                    <i class="fas fa-check"></i>
-                                                </span>
-                                                <span class="checkbox-content">
-                                                    <strong><i class="fas fa-exclamation-triangle"></i> 包含風險提醒</strong>
-                                                    <small>添加風險評估和投資注意事項</small>
-                                                </span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="option-category">
-                                    <h4>郵件優先級</h4>
-                                    <div class="priority-options">
-                                        <div class="radio-group">
-                                            <input type="radio" id="priority_low" name="priority" value="low">
-                                            <label for="priority_low">
-                                                <i class="fas fa-arrow-down priority-icon low"></i>
-                                                <span>低優先級</span>
-                                            </label>
-                                        </div>
-                                        <div class="radio-group">
-                                            <input type="radio" id="priority_normal" name="priority" value="normal" checked>
-                                            <label for="priority_normal">
-                                                <i class="fas fa-minus priority-icon normal"></i>
-                                                <span>一般</span>
-                                            </label>
-                                        </div>
-                                        <div class="radio-group">
-                                            <input type="radio" id="priority_high" name="priority" value="high">
-                                            <label for="priority_high">
-                                                <i class="fas fa-exclamation priority-icon high"></i>
-                                                <span>高優先級</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 步驟 4: 預覽與發送 -->
-                        <div class="form-step" data-step="4">
-                            <div class="step-header">
-                                <h3><i class="fas fa-paper-plane"></i> 預覽與發送</h3>
-                                <p>確認郵件內容並發送</p>
-                            </div>
-                            <div class="preview-section">
-                                <div class="email-preview" id="email-preview">
-                                    <div class="preview-header">
-                                        <h4><i class="fas fa-envelope"></i> 郵件預覽</h4>
-                                        <button type="button" class="preview-refresh-btn" onclick="generatePreview()">
-                                            <i class="fas fa-sync"></i> 刷新預覽
-                                        </button>
-                                    </div>
-                                    <div class="preview-content" id="preview-content">
-                                        <div class="loading-spinner">
-                                            <div class="spinner"></div>
-                                            <span>生成預覽中...</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 表單導航 -->
-                        <div class="form-navigation">
-                            <button type="button" id="prev-btn" class="nav-btn secondary" style="display: none;">
-                                <i class="fas fa-arrow-left"></i>
-                                <span>上一步</span>
-                            </button>
-                            <div class="step-info">
-                                <span class="step-current">1</span>
-                                <span class="step-separator">/</span>
-                                <span class="step-total">4</span>
-                            </div>
-                            <button type="button" id="next-btn" class="nav-btn primary">
-                                <span>下一步</span>
-                                <i class="fas fa-arrow-right"></i>
-                            </button>
-                            <button type="submit" id="send-btn" class="nav-btn success" style="display: none;" disabled>
+                        <div class="form-actions">
+                            <button type="submit" id="send-btn" class="btn btn-primary">
                                 <span class="btn-icon">
                                     <i class="fas fa-paper-plane"></i>
                                 </span>
@@ -314,7 +124,6 @@
                 </div>
                 <div class="modal-body">
                     <div id="result-message">郵件已成功發送！</div>
-                    <div id="result-details"></div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-primary" id="result-ok">確定</button>
@@ -337,13 +146,481 @@
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">版本</span>
-                        <span class="stat-value">v2.1.0</span>
+                        <span class="stat-value">v2.1.3</span>
                     </div>
                 </div>
             </div>
         </footer>
     </div>
 
-    <script src="/static/mail-script.js"></script>
+    <script>
+        // 簡化的郵件發送系統 JavaScript
+        console.log('📧 郵件發送系統載入中...');
+
+        let currentMarketData = null;
+
+        // 時間更新
+        function updateSystemTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('zh-TW');
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMarketData();
+            bindEvents();
+            updateSystemTime();
+            setInterval(updateSystemTime, 1000);
+            console.log('✅ 郵件系統初始化完成');
+        });
+
+        // 綁定事件
+        function bindEvents() {
+            // 表單提交
+            document.getElementById('mail-form').addEventListener('submit', handleSubmit);
+
+            // 模態框關閉
+            document.getElementById('result-close').addEventListener('click', hideModal);
+            document.getElementById('result-ok').addEventListener('click', hideModal);
+            document.getElementById('send-another').addEventListener('click', () => {
+                hideModal();
+                resetForm();
+            });
+
+            // 表單驗證
+            document.getElementById('recipient').addEventListener('input', validateForm);
+
+            // 模態框外部點擊關閉
+            document.getElementById('result-modal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) hideModal();
+            });
+
+            // ESC 鍵關閉模態框
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') hideModal();
+            });
+        }
+
+        // 載入市場數據
+        async function loadMarketData() {
+            try {
+                updateStatus('loading', '載入市場數據...');
+
+                const response = await fetch('/api/current-data');
+                const result = await response.json();
+
+                if (result.data && Object.keys(result.data).length > 0) {
+                    currentMarketData = result.data;
+                    displayMarketData(result.data);
+                    updateStatus('connected', '數據已更新');
+                    validateForm();
+                } else {
+                    displayNoData();
+                    updateStatus('waiting', '等待數據...');
+                }
+            } catch (error) {
+                console.error('載入市場數據失敗:', error);
+                displayError('無法載入市場數據: ' + error.message);
+                updateStatus('error', '連接錯誤');
+            }
+        }
+
+        // 顯示市場數據（簡化版）
+        function displayMarketData(data) {
+            const sentimentClass = getSentimentClass(data.average_sentiment_score);
+            const sentimentText = getSentimentText(data.average_sentiment_score);
+
+            document.getElementById('market-data-display').innerHTML = `
+                <div class="market-data-preview">
+                    <div class="preview-header">
+                        <h4><i class="fas fa-chart-pulse"></i> 準備發送的市場數據</h4>
+                    </div>
+
+                    <div class="data-summary">
+                        <div class="summary-item">
+                            <span class="summary-label">市場情緒:</span>
+                            <span class="summary-value sentiment-${sentimentClass}">${sentimentText}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">情感分數:</span>
+                            <span class="summary-value">${data.average_sentiment_score?.toFixed(3)}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">分析日期:</span>
+                            <span class="summary-value">${data.market_date || '今日'}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">風險評估:</span>
+                            <span class="summary-value">${data.risk_assessment || '中等'}</span>
+                        </div>
+                    </div>
+
+                    <div class="content-preview">
+                        <h5><i class="fas fa-newspaper"></i> 分析內容摘要</h5>
+                        <div class="content-snippet">
+                            ${formatContentPreview(data.raw_data.message.content)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 表單驗證
+        function validateForm() {
+            const recipient = document.getElementById('recipient').value;
+            const isValid = recipient && recipient.includes('@') && currentMarketData;
+
+            document.getElementById('send-btn').disabled = !isValid;
+            return isValid;
+        }
+
+        // 處理表單提交
+        async function handleSubmit(e) {
+            e.preventDefault();
+
+            if (!currentMarketData) {
+                showModal('error', '發送失敗', '沒有可用的市場數據');
+                return;
+            }
+
+            if (!validateForm()) {
+                showModal('error', '發送失敗', '請填寫有效的郵件地址');
+                return;
+            }
+
+            setLoadingState(true);
+
+            try {
+                const formData = new FormData(e.target);
+                const mailData = {
+                    recipient_email: formData.get('recipient'),
+                    custom_message: formData.get('custom_message') || ''
+                };
+
+                const response = await fetch('/api/send-mail-to-n8n', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(mailData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showModal('success', '發送成功',
+                        `郵件已成功發送至 ${formData.get('recipient')}`);
+                } else {
+                    throw new Error(result.detail || '發送失敗');
+                }
+
+            } catch (error) {
+                console.error('發送郵件失敗:', error);
+                showModal('error', '發送失敗', '發送過程中發生錯誤，請稍後重試');
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        // 輔助函數
+        function updateStatus(status, text) {
+            const dot = document.querySelector('#status-indicator .indicator-dot');
+            const textElement = document.querySelector('#status-indicator .indicator-text');
+
+            if (dot && textElement) {
+                dot.classList.remove('connected', 'error', 'loading');
+                if (status !== 'waiting') {
+                    dot.classList.add(status);
+                }
+                textElement.textContent = text;
+            }
+        }
+
+        function displayNoData() {
+            document.getElementById('market-data-display').innerHTML = `
+                <div class="no-data">
+                    <i class="fas fa-chart-bar"></i>
+                    <h3>等待市場數據</h3>
+                    <p>請確認 N8N 工作流程已正確運行並發送數據</p>
+                    <button onclick="loadMarketData()" class="retry-btn">
+                        <i class="fas fa-refresh"></i>
+                        重新載入
+                    </button>
+                </div>
+            `;
+        }
+
+        function displayError(message) {
+            document.getElementById('market-data-display').innerHTML = `
+                <div class="error-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>數據載入失敗</h3>
+                    <p>${message}</p>
+                    <button onclick="loadMarketData()" class="retry-btn">
+                        <i class="fas fa-refresh"></i>
+                        重試
+                    </button>
+                </div>
+            `;
+        }
+
+        function getSentimentClass(score) {
+            if (score > 0.1) return 'positive';
+            if (score < -0.1) return 'negative';
+            return 'neutral';
+        }
+
+        function getSentimentText(score) {
+            if (score > 0.6) return '極度樂觀';
+            if (score > 0.3) return '樂觀';
+            if (score > 0.1) return '略為樂觀';
+            if (score > -0.1) return '中性';
+            if (score > -0.3) return '略為悲觀';
+            if (score > -0.6) return '悲觀';
+            return '極度悲觀';
+        }
+
+        function formatContentPreview(content) {
+            if (!content) return '無市場分析內容';
+            if (content.length > 150) {
+                return content.substring(0, 150) + '...';
+            }
+            return content;
+        }
+
+        function setLoadingState(loading) {
+            const sendBtn = document.getElementById('send-btn');
+            if (loading) {
+                sendBtn.classList.add('loading');
+                sendBtn.disabled = true;
+            } else {
+                sendBtn.classList.remove('loading');
+                validateForm();
+            }
+        }
+
+        function showModal(type, title, message) {
+            const modal = document.getElementById('result-modal');
+            const icon = document.getElementById('result-icon');
+            const titleEl = document.getElementById('result-title');
+            const messageEl = document.getElementById('result-message');
+
+            icon.className = `modal-icon ${type}`;
+            icon.innerHTML = type === 'success' ?
+                '<i class="fas fa-check-circle"></i>' :
+                '<i class="fas fa-exclamation-circle"></i>';
+
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+
+            modal.classList.add('show');
+
+            // 成功時自動關閉
+            if (type === 'success') {
+                setTimeout(() => {
+                    hideModal();
+                }, 3000);
+            }
+        }
+
+        function hideModal() {
+            document.getElementById('result-modal').classList.remove('show');
+        }
+
+        function resetForm() {
+            document.getElementById('mail-form').reset();
+            validateForm();
+        }
+
+        // 全域錯誤處理
+        window.addEventListener('error', (e) => {
+            console.error('全域錯誤:', e.error);
+        });
+
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('未處理的 Promise 拒絕:', e.reason);
+        });
+
+        console.log('✅ 簡化郵件系統腳本載入完成');
+    </script>
+
+    <style>
+        /* 簡化表單樣式 */
+        .simple-mail-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .form-group input,
+        .form-group textarea {
+            padding: 1rem;
+            background: var(--surface-light);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: center;
+            padding-top: 1rem;
+        }
+
+        .btn {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 150px;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn.loading .btn-icon,
+        .btn.loading .btn-text {
+            opacity: 0;
+        }
+
+        .btn-loading {
+            display: none;
+            position: absolute;
+        }
+
+        .btn.loading .btn-loading {
+            display: block;
+        }
+
+        /* 市場數據預覽樣式 */
+        .market-data-preview {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .preview-header h4 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .data-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-glass);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+        }
+
+        .summary-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .summary-value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .summary-value.sentiment-positive {
+            color: var(--success);
+        }
+
+        .summary-value.sentiment-negative {
+            color: var(--error);
+        }
+
+        .summary-value.sentiment-neutral {
+            color: var(--warning);
+        }
+
+        .content-preview {
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .content-preview h5 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+        }
+
+        .content-snippet {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .data-summary {
+                grid-template-columns: 1fr;
+            }
+
+            .summary-item {
+                flex-direction: column;
+                gap: 0.25rem;
+                text-align: center;
+            }
+        }
+    </style>
 </body>
 </html>

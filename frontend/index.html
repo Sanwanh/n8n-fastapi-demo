@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/static/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-date-fns/2.0.0/chartjs-adapter-date-fns.bundle.min.js"></script>
 </head>
 <body>
     <div class="background-animation">
@@ -45,10 +46,6 @@
             </div>
             <h1>市場分析報告系統</h1>
             <p>智能情感分析 • 即時黃金價格 • 自動化報告</p>
-            <div class="last-updated" id="last-updated">
-                <i class="fas fa-sync"></i>
-                <span>最後更新: --</span>
-            </div>
         </header>
 
         <div class="main-content">
@@ -127,9 +124,6 @@
                                 <button class="chart-control-btn active" data-type="line">
                                     <i class="fas fa-chart-line"></i> 線圖
                                 </button>
-                                <button class="chart-control-btn" data-type="candle">
-                                    <i class="fas fa-chart-bar"></i> K線
-                                </button>
                             </div>
                         </div>
                         <div class="chart-container" id="chart-container">
@@ -169,28 +163,6 @@
             </div>
         </div>
 
-        <!-- 新增數據詳情卡片 -->
-        <div class="card data-details-card" style="margin-top: 2rem;">
-            <div class="card-header">
-                <div class="card-icon">
-                    <i class="fas fa-database"></i>
-                </div>
-                <h2>詳細數據日誌</h2>
-                <button onclick="toggleDataDetails()" class="action-btn secondary" id="details-toggle">
-                    <i class="fas fa-eye"></i>
-                    <span>顯示詳情</span>
-                </button>
-            </div>
-            <div class="card-content" id="data-details" style="display: none;">
-                <div id="detailed-logs">
-                    <div class="loading-spinner">
-                        <div class="spinner"></div>
-                        <span>正在載入詳細數據...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <footer class="page-footer">
             <div class="footer-content">
                 <div class="footer-info">
@@ -200,15 +172,11 @@
                 <div class="footer-stats">
                     <div class="stat-item">
                         <span class="stat-label">系統版本</span>
-                        <span class="stat-value">v2.1.0</span>
+                        <span class="stat-value">v2.1.3</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">數據來源</span>
                         <span class="stat-value">Yahoo Finance</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">下次更新</span>
-                        <span class="stat-value" id="next-update">--</span>
                     </div>
                 </div>
             </div>
@@ -216,7 +184,7 @@
     </div>
 
     <script>
-        // ===== 全域變數 =====
+        // 全域變數
         let goldChart = null;
         let goldPriceData = null;
         let marketData = null;
@@ -224,44 +192,30 @@
         let currentPeriod = '1y';
         let autoRefreshInterval = null;
         let indicatorsVisible = false;
-        let detailsVisible = false;
 
-        // ===== 初始化 =====
+        // 初始化
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 市場分析系統載入中...');
-
-            // 開始載入數據
             initializeSystem();
-
-            // 設定事件監聽
             setupEventListeners();
-
-            // 啟動時間更新
             updateSystemTime();
             setInterval(updateSystemTime, 1000);
-
-            // 設定自動刷新（每5分鐘）
             autoRefreshInterval = setInterval(refreshAllData, 300000);
-
             console.log('✅ 系統初始化完成');
         });
 
-        // ===== 系統初始化 =====
+        // 系統初始化
         async function initializeSystem() {
             console.log('📊 開始載入所有數據...');
-
-            // 並行載入數據
             await Promise.all([
                 loadMarketData(),
                 loadGoldPrice(currentPeriod, true)
             ]);
-
             console.log('✅ 所有數據載入完成');
         }
 
-        // ===== 事件監聽設定 =====
+        // 事件監聽設定
         function setupEventListeners() {
-            // 時間期間選擇
             const periodSelect = document.getElementById('time-period');
             if (periodSelect) {
                 periodSelect.addEventListener('change', function() {
@@ -271,7 +225,6 @@
                 });
             }
 
-            // 圖表類型切換
             const chartButtons = document.querySelectorAll('.chart-control-btn');
             chartButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -288,7 +241,7 @@
             console.log('🎯 事件監聽器設定完成');
         }
 
-        // ===== 時間更新 =====
+        // 時間更新
         function updateSystemTime() {
             const now = new Date();
             const timeElement = document.getElementById('current-time');
@@ -297,7 +250,7 @@
             }
         }
 
-        // ===== 載入市場數據 =====
+        // 載入市場數據
         async function loadMarketData() {
             try {
                 console.log('📈 開始載入市場情感分析數據...');
@@ -314,10 +267,6 @@
                         console.log('✅ 成功接收市場數據:', marketData);
                         displayMarketData(marketData);
                         updateMarketStatus('connected', '已連接');
-
-                        if (marketData.received_time) {
-                            updateLastUpdated(`市場分析更新: ${marketData.received_time}`);
-                        }
                     } else {
                         console.log('⚠️ 市場數據為空');
                         displayNoMarketData();
@@ -333,7 +282,7 @@
             }
         }
 
-        // ===== 載入黃金價格數據 =====
+        // 載入黃金價格數據
         async function loadGoldPrice(period = currentPeriod, showLoading = true) {
             try {
                 if (showLoading) {
@@ -350,7 +299,7 @@
                 if (response.ok && result.status === 'success' && result.data) {
                     goldPriceData = result.data;
                     console.log('✅ 成功獲取黃金價格數據:');
-                    console.log(`   價格: $${result.data.current_price}`);
+                    console.log(`   價格: ${result.data.current_price}`);
                     console.log(`   變化: ${result.data.change} (${result.data.change_percent}%)`);
                     console.log(`   數據點數量: ${result.data.chart_data?.length || 0}`);
 
@@ -358,20 +307,6 @@
                     updateTechnicalIndicators(result.data.technical_indicators || {});
                     createGoldChart(result.data);
                     updatePriceStatus('connected', '即時更新');
-
-                    if (result.next_update) {
-                        document.getElementById('next-update').textContent =
-                            new Date(result.next_update).toLocaleTimeString('zh-TW');
-                    }
-
-                    if (result.data.last_updated) {
-                        const lastUpdated = new Date(result.data.last_updated);
-                        updateLastUpdated(`最後更新: ${lastUpdated.toLocaleString('zh-TW')}`);
-                    }
-
-                    // 更新詳細日誌
-                    updateDetailedLogs(result);
-
                 } else {
                     throw new Error(result.message || `HTTP 錯誤: ${response.status}`);
                 }
@@ -382,7 +317,7 @@
             }
         }
 
-        // ===== 顯示市場數據 =====
+        // 顯示市場數據
         function displayMarketData(data) {
             console.log('🎨 顯示市場數據:', data);
 
@@ -459,7 +394,7 @@
             `;
         }
 
-        // ===== 顯示黃金價格 =====
+        // 顯示黃金價格
         function displayGoldPrice(data) {
             console.log('💰 顯示黃金價格數據:', data);
 
@@ -471,7 +406,7 @@
                 <div class="gold-price-info">
                     <div class="price-main">
                         <div class="current-price">
-                            <span class="price-value">$${data.current_price?.toFixed(2) || 'N/A'}</span>
+                            <span class="price-value">${data.current_price?.toFixed(2) || 'N/A'}</span>
                             <span class="price-unit">${data.unit || 'USD/oz'}</span>
                         </div>
                         <div class="price-change ${priceChangeClass}">
@@ -484,16 +419,16 @@
                     <div class="price-statistics">
                         <div class="stat-grid">
                             <div class="stat-item">
-                                <span class="stat-label">24H 高</span>
-                                <span class="stat-value">$${data.high_24h?.toFixed(2) || 'N/A'}</span>
+                                <span class="stat-label">期間高</span>
+                                <span class="stat-value">${data.high_24h?.toFixed(2) || 'N/A'}</span>
                             </div>
                             <div class="stat-item">
-                                <span class="stat-label">24H 低</span>
-                                <span class="stat-value">$${data.low_24h?.toFixed(2) || 'N/A'}</span>
+                                <span class="stat-label">期間低</span>
+                                <span class="stat-value">${data.low_24h?.toFixed(2) || 'N/A'}</span>
                             </div>
                             <div class="stat-item">
                                 <span class="stat-label">平均價格</span>
-                                <span class="stat-value">$${data.avg_price?.toFixed(2) || 'N/A'}</span>
+                                <span class="stat-value">${data.avg_price?.toFixed(2) || 'N/A'}</span>
                             </div>
                             <div class="stat-item">
                                 <span class="stat-label">波動率</span>
@@ -513,15 +448,15 @@
             `;
         }
 
-        // ===== 創建黃金價格圖表 =====
+        // 創建黃金價格圖表 - 修正版本
         function createGoldChart(data) {
             const canvas = document.getElementById('goldChart');
             if (!canvas) {
-                console.error('❌ 找不到 Canvas 元素: goldChart');
+                console.error('❌ 找不到 Canvas 元素');
                 return;
             }
 
-            // 重要：正確銷毀現有圖表
+            // 銷毀現有圖表
             if (goldChart) {
                 console.log('🗑️ 銷毀現有圖表');
                 goldChart.destroy();
@@ -529,44 +464,45 @@
             }
 
             if (!data.chart_data || !Array.isArray(data.chart_data) || data.chart_data.length === 0) {
-                console.warn('⚠️ 圖表數據為空或無效，不渲染圖表');
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                console.warn('⚠️ 圖表數據為空');
                 return;
             }
 
             console.log(`📊 創建圖表，數據點: ${data.chart_data.length}`);
 
+            // 準備數據
             const chartData = data.chart_data;
-            const labels = chartData.map(d => new Date(d.time));
+            const labels = chartData.map(d => d.time);
             const prices = chartData.map(d => d.price);
 
-            console.log(`📈 圖表數據範圍: $${Math.min(...prices).toFixed(2)} - $${Math.max(...prices).toFixed(2)}`);
+            console.log(`📈 數據範圍: ${Math.min(...prices).toFixed(2)} - ${Math.max(...prices).toFixed(2)}`);
 
             const config = {
-                type: chartType,
+                type: 'line',
                 data: {
                     labels: labels,
                     datasets: [{
                         label: '黃金價格 (USD/oz)',
                         data: prices,
                         borderColor: '#FFD700',
-                        backgroundColor: chartType === 'line' ? 'rgba(255, 215, 0, 0.1)' :
-                            prices.map((price, i) => {
-                                const open = chartData[i]?.open || price;
-                                return open <= price ? '#10b981' : '#ef4444';
-                            }),
-                        borderWidth: 2,
-                        fill: chartType === 'line',
+                        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
                         tension: 0.4,
-                        pointRadius: 0,
-                        pointHoverRadius: 6
+                        pointRadius: 2,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#FFD700',
+                        pointBorderColor: '#DAA520',
+                        pointBorderWidth: 2
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: { intersect: false, mode: 'index' },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
                     plugins: {
                         title: {
                             display: true,
@@ -575,25 +511,30 @@
                             font: { size: 16, weight: 'bold' }
                         },
                         legend: {
-                            labels: { color: '#cbd5e1' }
+                            labels: {
+                                color: '#cbd5e1',
+                                usePointStyle: true
+                            }
                         },
                         tooltip: {
-                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
                             titleColor: '#f8fafc',
                             bodyColor: '#cbd5e1',
-                            borderColor: '#334155',
-                            borderWidth: 1,
+                            borderColor: '#FFD700',
+                            borderWidth: 2,
+                            cornerRadius: 8,
+                            displayColors: true,
                             callbacks: {
                                 label: function(context) {
-                                    return `價格: $${context.parsed.y.toFixed(2)}`;
+                                    return `價格: ${context.parsed.y.toFixed(2)}`;
                                 },
                                 afterLabel: function(context) {
                                     const dataPoint = chartData[context.dataIndex];
                                     if (dataPoint) {
                                         return [
-                                            `開盤: $${dataPoint.open?.toFixed(2) || 'N/A'}`,
-                                            `最高: $${dataPoint.high?.toFixed(2) || 'N/A'}`,
-                                            `最低: $${dataPoint.low?.toFixed(2) || 'N/A'}`,
+                                            `開盤: ${dataPoint.open?.toFixed(2) || 'N/A'}`,
+                                            `最高: ${dataPoint.high?.toFixed(2) || 'N/A'}`,
+                                            `最低: ${dataPoint.low?.toFixed(2) || 'N/A'}`,
                                             `交易量: ${dataPoint.volume?.toLocaleString() || 'N/A'}`
                                         ];
                                     }
@@ -606,21 +547,32 @@
                         x: {
                             type: 'time',
                             time: {
-                                unit: currentPeriod === '1d' ? 'hour' :
-                                      currentPeriod === '5d' ? 'day' :
-                                      currentPeriod.includes('mo') ? 'week' : 'month'
+                                parser: 'YYYY-MM-DD',
+                                tooltipFormat: 'YYYY-MM-DD',
+                                displayFormats: {
+                                    day: 'MM-DD',
+                                    week: 'MM-DD',
+                                    month: 'MM-YYYY'
+                                }
                             },
-                            ticks: { color: '#64748b' },
-                            grid: { color: 'rgba(100, 116, 139, 0.1)' }
+                            ticks: {
+                                color: '#64748b',
+                                maxTicksLimit: 8
+                            },
+                            grid: {
+                                color: 'rgba(100, 116, 139, 0.2)'
+                            }
                         },
                         y: {
                             ticks: {
                                 color: '#64748b',
                                 callback: function(value) {
-                                    return '$' + value.toFixed(0);
+                                    return ' + value.toFixed(0);
                                 }
                             },
-                            grid: { color: 'rgba(100, 116, 139, 0.1)' }
+                            grid: {
+                                color: 'rgba(100, 116, 139, 0.2)'
+                            }
                         }
                     }
                 }
@@ -635,21 +587,19 @@
             }
         }
 
-        // ===== 更新技術指標 =====
+        // 更新技術指標
         function updateTechnicalIndicators(indicators) {
             console.log('📊 更新技術指標:', indicators);
 
             if (indicators.ma_20) {
-                document.getElementById('ma20-value').textContent = '$' + indicators.ma_20.toFixed(2);
+                document.getElementById('ma20-value').textContent = ' + indicators.ma_20.toFixed(2);
             }
             if (indicators.ma_50) {
-                document.getElementById('ma50-value').textContent = '$' + indicators.ma_50.toFixed(2);
+                document.getElementById('ma50-value').textContent = ' + indicators.ma_50.toFixed(2);
             }
             if (indicators.rsi) {
                 const rsiElement = document.getElementById('rsi-value');
                 rsiElement.textContent = indicators.rsi.toFixed(1);
-
-                // RSI 顏色指示
                 rsiElement.className = 'indicator-value';
                 if (indicators.rsi > 70) {
                     rsiElement.classList.add('rsi-overbought');
@@ -661,150 +611,7 @@
             }
         }
 
-        // ===== 更新詳細日誌 =====
-        function updateDetailedLogs(goldData) {
-            const detailsContainer = document.getElementById('detailed-logs');
-            if (!detailsContainer) return;
-
-            console.log('📝 更新詳細日誌');
-
-            const logs = [];
-
-            // 系統資訊
-            logs.push(`<div class="log-section">
-                <h4><i class="fas fa-info-circle"></i> 系統資訊</h4>
-                <div class="log-content">
-                    <p><strong>系統時間:</strong> ${new Date().toLocaleString('zh-TW')}</p>
-                    <p><strong>數據來源:</strong> ${goldData.data_source || 'Yahoo Finance'}</p>
-                    <p><strong>API狀態:</strong> <span class="status-success">正常</span></p>
-                    <p><strong>下次更新:</strong> ${goldData.next_update || '5分鐘後'}</p>
-                </div>
-            </div>`);
-
-            // 黃金價格詳情
-            if (goldData.data) {
-                logs.push(`<div class="log-section">
-                    <h4><i class="fas fa-coins"></i> 黃金價格詳情</h4>
-                    <div class="log-content">
-                        <p><strong>代碼:</strong> ${goldData.data.symbol || 'GC=F'}</p>
-                        <p><strong>名稱:</strong> ${goldData.data.name || 'Gold Futures'}</p>
-                        <p><strong>當前價格:</strong> ${goldData.data.current_price?.toFixed(2) || 'N/A'}</p>
-                        <p><strong>變化金額:</strong> ${goldData.data.change >= 0 ? '+' : ''}${goldData.data.change?.toFixed(2) || 'N/A'}</p>
-                        <p><strong>變化百分比:</strong> ${goldData.data.change_percent >= 0 ? '+' : ''}${goldData.data.change_percent?.toFixed(2) || 'N/A'}%</p>
-                        <p><strong>24小時最高:</strong> ${goldData.data.high_24h?.toFixed(2) || 'N/A'}</p>
-                        <p><strong>24小時最低:</strong> ${goldData.data.low_24h?.toFixed(2) || 'N/A'}</p>
-                        <p><strong>平均價格:</strong> ${goldData.data.avg_price?.toFixed(2) || 'N/A'}</p>
-                        <p><strong>波動率:</strong> ${goldData.data.volatility?.toFixed(2) || 'N/A'}</p>
-                        <p><strong>交易量:</strong> ${goldData.data.volume_24h?.toLocaleString() || 'N/A'}</p>
-                        <p><strong>市場狀態:</strong> ${getMarketStatusText(goldData.data.market_status)}</p>
-                        <p><strong>貨幣單位:</strong> ${goldData.data.currency || 'USD'}</p>
-                        <p><strong>數據點數量:</strong> ${goldData.data.data_points || 0}</p>
-                        <p><strong>交易天數:</strong> ${goldData.data.trading_days || 0}</p>
-                        <p><strong>時間期間:</strong> ${goldData.data.period || currentPeriod}</p>
-                        <p><strong>時間間隔:</strong> ${goldData.data.interval || '1d'}</p>
-                        <p><strong>最後更新:</strong> ${new Date(goldData.data.last_updated).toLocaleString('zh-TW')}</p>
-                    </div>
-                </div>`);
-            }
-
-            // 技術指標詳情
-            if (goldData.data?.technical_indicators) {
-                const indicators = goldData.data.technical_indicators;
-                logs.push(`<div class="log-section">
-                    <h4><i class="fas fa-chart-line"></i> 技術指標詳情</h4>
-                    <div class="log-content">
-                        ${indicators.ma_20 ? `<p><strong>MA20 (20日移動平均):</strong> ${indicators.ma_20.toFixed(2)}</p>` : ''}
-                        ${indicators.ma_50 ? `<p><strong>MA50 (50日移動平均):</strong> ${indicators.ma_50.toFixed(2)}</p>` : ''}
-                        ${indicators.rsi ? `<p><strong>RSI (相對強弱指標):</strong> ${indicators.rsi.toFixed(1)} ${getRSIStatus(indicators.rsi)}</p>` : ''}
-                        ${indicators.volatility_5d ? `<p><strong>5日波動率:</strong> ${indicators.volatility_5d.toFixed(2)}</p>` : ''}
-                        ${indicators.price_vs_ma20 ? `<p><strong>價格相對MA20:</strong> ${indicators.price_vs_ma20 >= 0 ? '+' : ''}${indicators.price_vs_ma20.toFixed(2)}%</p>` : ''}
-                    </div>
-                </div>`);
-            }
-
-            // 市場數據詳情
-            if (marketData) {
-                logs.push(`<div class="log-section">
-                    <h4><i class="fas fa-brain"></i> 市場情感分析詳情</h4>
-                    <div class="log-content">
-                        <p><strong>情感分數:</strong> ${marketData.average_sentiment_score?.toFixed(3) || 'N/A'}</p>
-                        <p><strong>情感描述:</strong> ${getSentimentText(marketData.average_sentiment_score)}</p>
-                        <p><strong>市場日期:</strong> ${marketData.market_date || '未知'}</p>
-                        <p><strong>信心水平:</strong> ${marketData.confidence_level || '未評估'}</p>
-                        <p><strong>趨勢方向:</strong> ${marketData.trend_direction || '未評估'}</p>
-                        <p><strong>風險評估:</strong> ${marketData.risk_assessment || '未評估'}</p>
-                        <p><strong>接收時間:</strong> ${marketData.received_time || '未知'}</p>
-                        <p><strong>內容長度:</strong> ${marketData.message_content?.length || 0} 字元</p>
-                    </div>
-                </div>`);
-            }
-
-            // 圖表數據樣本
-            if (goldData.data?.chart_data && goldData.data.chart_data.length > 0) {
-                const chartData = goldData.data.chart_data;
-                const sampleSize = Math.min(5, chartData.length);
-                const samples = chartData.slice(-sampleSize);
-
-                logs.push(`<div class="log-section">
-                    <h4><i class="fas fa-database"></i> 圖表數據樣本 (最近${sampleSize}筆)</h4>
-                    <div class="log-content">
-                        <div class="data-table">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>時間</th>
-                                        <th>開盤</th>
-                                        <th>最高</th>
-                                        <th>最低</th>
-                                        <th>收盤</th>
-                                        <th>交易量</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${samples.map(point => `
-                                        <tr>
-                                            <td>${new Date(point.time).toLocaleDateString('zh-TW')}</td>
-                                            <td>${point.open?.toFixed(2) || 'N/A'}</td>
-                                            <td>${point.high?.toFixed(2) || 'N/A'}</td>
-                                            <td>${point.low?.toFixed(2) || 'N/A'}</td>
-                                            <td>${point.price?.toFixed(2) || 'N/A'}</td>
-                                            <td>${point.volume?.toLocaleString() || 'N/A'}</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>`);
-            }
-
-            // 完整年度數據統計
-            if (goldData.data?.chart_data && goldData.data.chart_data.length > 0) {
-                const chartData = goldData.data.chart_data;
-                const prices = chartData.map(d => d.price).filter(p => p && !isNaN(p));
-                const volumes = chartData.map(d => d.volume).filter(v => v && !isNaN(v));
-
-                logs.push(`<div class="log-section">
-                    <h4><i class="fas fa-chart-bar"></i> 完整年度數據統計</h4>
-                    <div class="log-content">
-                        <p><strong>總數據點數:</strong> ${chartData.length}</p>
-                        <p><strong>有效價格數據:</strong> ${prices.length}</p>
-                        <p><strong>價格範圍:</strong> ${Math.min(...prices).toFixed(2)} - ${Math.max(...prices).toFixed(2)}</p>
-                        <p><strong>年度平均價格:</strong> ${(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2)}</p>
-                        <p><strong>年度價格標準差:</strong> ${calculateStandardDeviation(prices).toFixed(2)}</p>
-                        <p><strong>總交易量:</strong> ${volumes.reduce((a, b) => a + b, 0).toLocaleString()}</p>
-                        <p><strong>平均日交易量:</strong> ${(volumes.reduce((a, b) => a + b, 0) / volumes.length).toLocaleString()}</p>
-                        <p><strong>數據起始日期:</strong> ${new Date(chartData[0].time).toLocaleDateString('zh-TW')}</p>
-                        <p><strong>數據結束日期:</strong> ${new Date(chartData[chartData.length - 1].time).toLocaleDateString('zh-TW')}</p>
-                        <p><strong>年度漲跌:</strong> ${((prices[prices.length - 1] - prices[0]) / prices[0] * 100).toFixed(2)}%</p>
-                    </div>
-                </div>`);
-            }
-
-            detailsContainer.innerHTML = logs.join('');
-        }
-
-        // ===== 狀態更新函數 =====
+        // 狀態更新函數
         function updateMarketStatus(status, text) {
             const dot = document.querySelector('#status-indicator .indicator-dot');
             const textElement = document.querySelector('#status-indicator .indicator-text');
@@ -831,14 +638,7 @@
             }
         }
 
-        function updateLastUpdated(text) {
-            const element = document.getElementById('last-updated');
-            if (element) {
-                element.querySelector('span').textContent = text;
-            }
-        }
-
-        // ===== 載入和錯誤顯示函數 =====
+        // 載入和錯誤顯示函數
         function showPriceLoading() {
             const display = document.getElementById('price-display');
             display.innerHTML = `
@@ -894,7 +694,7 @@
             `;
         }
 
-        // ===== 輔助函數 =====
+        // 輔助函數
         function getSentimentClass(score) {
             if (score > 0.1) return 'positive';
             if (score < -0.1) return 'negative';
@@ -920,20 +720,7 @@
             return statusMap[status] || status;
         }
 
-        function getRSIStatus(rsi) {
-            if (rsi > 70) return '(超買)';
-            if (rsi < 30) return '(超賣)';
-            return '(正常)';
-        }
-
-        function calculateStandardDeviation(values) {
-            const avg = values.reduce((a, b) => a + b) / values.length;
-            const squareDiffs = values.map(value => Math.pow(value - avg, 2));
-            const avgSquareDiff = squareDiffs.reduce((a, b) => a + b) / squareDiffs.length;
-            return Math.sqrt(avgSquareDiff);
-        }
-
-        // ===== 按鈕操作函數 =====
+        // 按鈕操作函數
         function refreshAllData() {
             console.log('🔄 刷新所有數據');
             const refreshBtn = document.getElementById('refresh-btn');
@@ -969,27 +756,6 @@
             }
         }
 
-        function toggleDataDetails() {
-            const details = document.getElementById('data-details');
-            const toggleBtn = document.getElementById('details-toggle');
-
-            if (details) {
-                detailsVisible = !detailsVisible;
-                details.style.display = detailsVisible ? 'block' : 'none';
-
-                if (toggleBtn) {
-                    toggleBtn.innerHTML = detailsVisible ?
-                        '<i class="fas fa-eye-slash"></i><span>隱藏詳情</span>' :
-                        '<i class="fas fa-eye"></i><span>顯示詳情</span>';
-                }
-
-                // 如果顯示詳情且有數據，更新日誌
-                if (detailsVisible && goldPriceData) {
-                    updateDetailedLogs({ data: goldPriceData });
-                }
-            }
-        }
-
         function toggleMarketContent() {
             const content = document.getElementById('market-content');
             const isExpanded = content.style.maxHeight === 'none';
@@ -1003,7 +769,7 @@
             }
         }
 
-        // ===== 錯誤處理 =====
+        // 錯誤處理
         window.addEventListener('error', (e) => {
             console.error('JavaScript 錯誤:', e.error);
         });
@@ -1014,99 +780,5 @@
 
         console.log('✅ 市場分析系統腳本載入完成');
     </script>
-
-    <style>
-        /* 詳細日誌樣式 */
-        .data-details-card {
-            background: var(--bg-card);
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--border);
-            backdrop-filter: blur(20px);
-            box-shadow: var(--shadow-lg);
-            overflow: hidden;
-            transition: var(--transition);
-        }
-
-        .log-section {
-            margin-bottom: 2rem;
-            padding: 1.5rem;
-            background: var(--bg-glass);
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-        }
-
-        .log-section h4 {
-            color: var(--text-primary);
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .log-content {
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }
-
-        .log-content p {
-            margin-bottom: 0.5rem;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.9rem;
-        }
-
-        .log-content strong {
-            color: var(--text-primary);
-        }
-
-        .status-success {
-            color: var(--success);
-            font-weight: bold;
-        }
-
-        .data-table {
-            overflow-x: auto;
-            margin-top: 1rem;
-        }
-
-        .data-table table {
-            width: 100%;
-            border-collapse: collapse;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.85rem;
-        }
-
-        .data-table th,
-        .data-table td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .data-table th {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-            font-weight: bold;
-        }
-
-        .data-table td {
-            color: var(--text-secondary);
-        }
-
-        .data-table tr:hover {
-            background: var(--bg-glass);
-        }
-
-        /* 響應式設計 */
-        @media (max-width: 768px) {
-            .data-table {
-                font-size: 0.8rem;
-            }
-
-            .data-table th,
-            .data-table td {
-                padding: 0.5rem;
-            }
-        }
-    </style>
 </body>
 </html>
