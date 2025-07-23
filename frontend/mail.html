@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="/static/mail-style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
+
 <body>
     <div class="background-animation">
         <div class="floating-shape shape-1"></div>
@@ -81,8 +83,8 @@
                                 <i class="fas fa-envelope"></i>
                                 收件人郵件地址 *
                             </label>
-                            <input type="email" id="recipient" name="recipient"
-                                   placeholder="example@email.com" required>
+                            <input type="email" id="recipient" name="recipient" placeholder="example@email.com"
+                                required>
                         </div>
 
                         <div class="form-group">
@@ -91,7 +93,7 @@
                                 自訂訊息 (選填)
                             </label>
                             <textarea id="custom_message" name="custom_message" rows="3"
-                                     placeholder="請輸入您想要添加的自訂內容..."></textarea>
+                                placeholder="請輸入您想要添加的自訂內容..."></textarea>
                         </div>
 
                         <div class="form-actions">
@@ -103,6 +105,13 @@
                                 <div class="btn-loading">
                                     <i class="fas fa-spinner fa-spin"></i>
                                 </div>
+                            </button>
+                            <button type="button" id="debug-btn" class="btn btn-secondary"
+                                onclick="debugDataStructure()">
+                                <span class="btn-icon">
+                                    <i class="fas fa-bug"></i>
+                                </span>
+                                <span class="btn-text">查看數據結構</span>
                             </button>
                         </div>
                     </form>
@@ -166,7 +175,7 @@
         }
 
         // 初始化
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             loadMarketData();
             bindEvents();
             updateSystemTime();
@@ -258,7 +267,7 @@
                     <div class="content-preview">
                         <h5><i class="fas fa-newspaper"></i> 分析內容摘要</h5>
                         <div class="content-snippet">
-                            ${formatContentPreview(data.raw_data.message.content)}
+                            ${formatContentPreview(data.message_content)}
                         </div>
                     </div>
                 </div>
@@ -432,6 +441,29 @@
             validateForm();
         }
 
+        // 調試數據結構函數
+        async function debugDataStructure() {
+            try {
+                const response = await fetch('/api/debug-stored-data');
+                const result = await response.json();
+
+                if (result.status === 'success' && result.json_data) {
+                    console.log('📋 發送到 N8N 的完整 JSON 數據:');
+                    console.log(JSON.stringify(result.json_data, null, 2));
+
+                    showModal('success', '數據結構查看',
+                        `完整的 JSON 數據已輸出到瀏覽器控制台 (F12)。
+                        
+Webhook URL: ${result.webhook_url}`);
+                } else {
+                    showModal('error', '調試失敗', result.message || '無法獲取數據結構');
+                }
+            } catch (error) {
+                console.error('調試數據結構失敗:', error);
+                showModal('error', '調試失敗', '獲取數據結構時發生錯誤');
+            }
+        }
+
         // 全域錯誤處理
         window.addEventListener('error', (e) => {
             console.error('全域錯誤:', e.error);
@@ -487,6 +519,7 @@
         .form-actions {
             display: flex;
             justify-content: center;
+            gap: 1rem;
             padding-top: 1rem;
         }
 
@@ -623,4 +656,5 @@
         }
     </style>
 </body>
+
 </html>

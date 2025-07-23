@@ -64,7 +64,7 @@ def load_config():
                 'WEBHOOK_URL',
                 'https://beloved-swine-sensibly.ngrok-free.app/webhook-test/ef5ac185-f41a-4a2d-9a78-33d329184c2'
             ),
-            'n8n_webhook_url': 'https://beloved-swine-sensibly.ngrok-free.app/webhook/Webhook%20-%20Preview',
+            'n8n_webhook_url': 'https://beloved-swine-sensibly.ngrok-free.app/webhook/Webhook - Preview',
             'timeout': int(os.getenv('WEBHOOK_TIMEOUT', 30))
         },
         'SYSTEM_INFO': {
@@ -97,7 +97,7 @@ class N8NDataExtended(BaseModel):
 class MailSenderRequest(BaseModel):
     recipient_email: EmailStr
     sender_name: Optional[str] = "市場分析系統"
-    subject: str
+    subject: Optional[str] = "市場分析報告"
     priority: Optional[str] = "normal"
     mail_type: Optional[str] = "daily"
     custom_message: Optional[str] = ""
@@ -210,14 +210,14 @@ async def receive_n8n_data(request: Request):
         system_stats["last_data_received"] = current_time.isoformat()
 
         # 詳細記錄處理後的數據
-        logger.info(f"✅ 成功處理 N8N 資料:")
-        logger.info(f"   情感分數: {stored_data['average_sentiment_score']}")
-        logger.info(f"   內容長度: {len(stored_data['message_content'])} 字元")
-        logger.info(f"   市場日期: {stored_data['market_date']}")
-        logger.info(f"   信心水平: {stored_data['confidence_level']}")
-        logger.info(f"   趨勢方向: {stored_data['trend_direction']}")
-        logger.info(f"   風險評估: {stored_data['risk_assessment']}")
-        logger.info(f"   接收時間: {stored_data['received_time']}")
+        # logger.info(f"✅ 成功處理 N8N 資料:")
+        # logger.info(f"   情感分數: {stored_data['average_sentiment_score']}")
+        # logger.info(f"   內容長度: {len(stored_data['message_content'])} 字元")
+        # logger.info(f"   市場日期: {stored_data['market_date']}")
+        # logger.info(f"   信心水平: {stored_data['confidence_level']}")
+        # logger.info(f"   趨勢方向: {stored_data['trend_direction']}")
+        # logger.info(f"   風險評估: {stored_data['risk_assessment']}")
+        # logger.info(f"   接收時間: {stored_data['received_time']}")
 
         return {
             "status": "success",
@@ -307,7 +307,7 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
 
         # 獲取黃金期貨數據
         try:
-            hist_data, info, current_price = await get_gold_futures_data_enhanced(period, interval)
+            hist_data, info, current_price, latest_processing_time = await get_gold_futures_data_enhanced(period, interval)
 
             if hist_data is None or hist_data.empty:
                 logger.warning("⚠️ 主要數據源無數據，使用備選方案...")
@@ -329,35 +329,52 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
             logger.warning("⚠️ 統計計算失敗，使用備選數據")
             return create_mock_gold_data(period)
 
-        logger.info(f"💰 價格統計:")
-        logger.info(f"   當前價格: ${stats['current_price']:.2f}")
-        logger.info(f"   價格變化: ${stats['price_change']:+.2f} ({stats['price_change_pct']:+.2f}%)")
-        logger.info(f"   價格範圍: ${stats['min_price']:.2f} - ${stats['max_price']:.2f}")
-        logger.info(f"   平均價格: ${stats['avg_price']:.2f}")
-        logger.info(f"   波動率: {stats['volatility']:.2f}")
+        # logger.info(f"💰 價格統計:")
+        # logger.info(f"   當前價格: ${stats['current_price']:.2f}")
+        # logger.info(f"   價格變化: ${stats['price_change']:+.2f} ({stats['price_change_pct']:+.2f}%)")
+        # logger.info(f"   價格範圍: ${stats['min_price']:.2f} - ${stats['max_price']:.2f}")
+        # logger.info(f"   平均價格: ${stats['avg_price']:.2f}")
+        # logger.info(f"   波動率: {stats['volatility']:.2f}")
 
         # 準備圖表數據
         chart_data = []
         for idx, row in hist_data.iterrows():
             try:
+                # 修正時區問題，轉換為台北時間
+                if hasattr(idx, 'tz_localize'):
+                    if idx.tz is None:
+                        # 假設是UTC時間，轉換為台北時間
+                        idx_local = idx + timedelta(hours=8)
+                    else:
+                        # 轉換為台北時間
+                        idx_local = idx.tz_convert('Asia/Taipei')
+                else:
+                    # 假設是UTC時間，轉換為台北時間
+                    idx_local = idx + timedelta(hours=8)
+                
                 data_point = {
-                    "time": idx.isoformat(),
+                    "time": idx_local.strftime('%Y-%m-%d'),
                     "price": float(row['Close']) if not pd.isna(row['Close']) else stats['current_price'],
                     "high": float(row['High']) if not pd.isna(row['High']) else stats['current_price'],
                     "low": float(row['Low']) if not pd.isna(row['Low']) else stats['current_price'],
                     "open": float(row['Open']) if not pd.isna(row['Open']) else stats['current_price'],
                     "volume": int(row['Volume']) if not pd.isna(row['Volume']) and row['Volume'] > 0 else 0
                 }
+                logger.debug(f"數據點: {data_point['time']} - ${data_point['price']:.2f}")
                 chart_data.append(data_point)
             except Exception as point_error:
                 logger.warning(f"⚠️ 處理數據點時出錯: {point_error}")
                 continue
 
-        logger.info(f"📊 圖表數據:")
-        logger.info(f"   有效數據點: {len(chart_data)}")
+        # logger.info(f"📊 圖表數據:")
+        # logger.info(f"   有效數據點: {len(chart_data)}")
         if chart_data:
             prices = [d['price'] for d in chart_data]
-            logger.info(f"   價格範圍: ${min(prices):.2f} - ${max(prices):.2f}")
+            valid_prices = [p for p in prices if not pd.isna(p) and p > 0]
+            logger.info(f"   有效價格數量: {len(valid_prices)}")
+            if valid_prices:
+                logger.info(f"   價格範圍: ${min(valid_prices):.2f} - ${max(valid_prices):.2f}")
+            # logger.info(f"   前3個數據點: {chart_data[:3]}")
 
         # 計算技術指標
         technical_indicators = calculate_technical_indicators_enhanced(hist_data)
@@ -387,6 +404,7 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
                 "currency": "USD",
                 "unit": "per ounce",
                 "last_updated": stats['latest_date'].isoformat(),
+                "last_updated_formatted": latest_processing_time,
                 "chart_data": chart_data,
                 "market_status": market_status,
                 "technical_indicators": technical_indicators,
@@ -468,6 +486,7 @@ async def get_gold_futures_data_enhanced(period: str, interval: str):
                     latest_time = today_data.index[-1]
 
                     logger.info(f"📊 今日數據: {len(today_data)} 筆，最新價格: ${latest_price:.2f}")
+                    logger.info(f"📅 原始時間: {latest_time}")
 
                     # 更新歷史數據中的最新價格
                     if len(hist_data) > 0:
@@ -494,7 +513,21 @@ async def get_gold_futures_data_enhanced(period: str, interval: str):
                             hist_data = pd.concat([hist_data, new_row])
                             logger.info("✅ 已添加今日數據")
 
-                    logger.info(f"✅ 當天數據處理完成，最新時間: {latest_time.strftime('%Y-%m-%d %H:%M')}")
+                    # 修正時區問題，轉換為台北時間 (+8)
+                    if hasattr(latest_time, 'tz_localize'):
+                        # 如果是時區感知的時間，轉換為台北時間
+                        if latest_time.tz is None:
+                            # 假設是UTC時間，轉換為台北時間
+                            latest_time_local = latest_time + timedelta(hours=8)
+                        else:
+                            # 轉換為台北時間
+                            latest_time_local = latest_time.tz_convert('Asia/Taipei')
+                    else:
+                        # 假設是UTC時間，轉換為台北時間
+                        latest_time_local = latest_time + timedelta(hours=8)
+                    
+                    latest_time_formatted = latest_time_local.strftime('%Y-%m-%d %H:%M')
+                    logger.info(f"✅ 當天數據處理完成，最新時間: {latest_time_formatted}")
                 else:
                     logger.info("ℹ️ 當天暫無交易數據")
             else:
@@ -521,7 +554,26 @@ async def get_gold_futures_data_enhanced(period: str, interval: str):
         logger.info(f"   最新價格: ${current_price:.2f}")
         logger.info(f"   最後更新: {hist_data.index[-1].strftime('%Y-%m-%d %H:%M')}")
 
-        return hist_data, info, current_price
+        # 獲取最新的處理時間
+        latest_processing_time = None
+        if 'latest_time_formatted' in locals():
+            latest_processing_time = latest_time_formatted
+        else:
+            # 修正時區問題，轉換為台北時間 (+8)
+            last_time = hist_data.index[-1]
+            if hasattr(last_time, 'tz_localize'):
+                if last_time.tz is None:
+                    # 假設是UTC時間，轉換為台北時間
+                    last_time_local = last_time + timedelta(hours=8)
+                else:
+                    # 轉換為台北時間
+                    last_time_local = last_time.tz_convert('Asia/Taipei')
+            else:
+                # 假設是UTC時間，轉換為台北時間
+                last_time_local = last_time + timedelta(hours=8)
+            latest_processing_time = last_time_local.strftime('%Y-%m-%d %H:%M')
+
+        return hist_data, info, current_price, latest_processing_time
 
     except Exception as e:
         logger.error(f"❌ 獲取數據時發生錯誤: {e}")
@@ -735,19 +787,29 @@ def create_mock_gold_data(period: str):
 async def send_mail_to_n8n(mail_data: MailSenderRequest):
     """發送郵件數據到 N8N webhook"""
     try:
+        logger.info(f"📧 收到郵件發送請求:")
+        logger.info(f"   收件人: {mail_data.recipient_email}")
+        logger.info(f"   自訂訊息: {mail_data.custom_message[:50] if mail_data.custom_message else '無'}...")
+        logger.info(f"   主題: {mail_data.subject}")
+        
         if not stored_data:
+            logger.error("❌ 沒有可用的市場分析資料")
             raise HTTPException(status_code=400, detail="沒有可用的市場分析資料")
+
+        logger.info(f"📊 當前儲存數據: {len(stored_data)} 個欄位")
+        logger.info(f"   情感分數: {stored_data.get('average_sentiment_score', 'N/A')}")
+        logger.info(f"   內容長度: {len(stored_data.get('message_content', ''))} 字元")
 
         # 構建發送到 N8N 的數據結構
         send_data = {
             **stored_data,
             "mail_config": {
                 "recipient_email": str(mail_data.recipient_email),
-                "sender_name": mail_data.sender_name,
-                "subject": mail_data.subject,
-                "priority": mail_data.priority,
-                "mail_type": mail_data.mail_type,
-                "custom_message": mail_data.custom_message,
+                "sender_name": mail_data.sender_name or "市場分析系統",
+                "subject": mail_data.subject or "市場分析報告",
+                "priority": mail_data.priority or "normal",
+                "mail_type": mail_data.mail_type or "daily",
+                "custom_message": mail_data.custom_message or "",
                 "include_charts": mail_data.include_charts,
                 "include_recommendations": mail_data.include_recommendations,
                 "include_risk_warning": mail_data.include_risk_warning
@@ -764,6 +826,16 @@ async def send_mail_to_n8n(mail_data: MailSenderRequest):
             }
         }
 
+        # logger.info(f"📤 準備發送數據到 N8N:")
+        # logger.info(f"   Webhook URL: {CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url']}")
+        # logger.info(f"   數據大小: {len(json.dumps(send_data, ensure_ascii=False))} 字元")
+        #
+        # # 輸出完整的 JSON 數據
+        # logger.info("📋 發送到 N8N 的完整 JSON 數據:")
+        # logger.info(json.dumps(send_data, ensure_ascii=False, indent=2))
+        #
+        # logger.info("📤 開始發送數據到 N8N...")
+
         response = requests.post(
             CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url'],
             json=send_data,
@@ -771,20 +843,27 @@ async def send_mail_to_n8n(mail_data: MailSenderRequest):
             timeout=CONFIG['WEBHOOK_CONFIG']['timeout']
         )
 
+        logger.info(f"📡 N8N 回應狀態: {response.status_code}")
+        logger.info(f"📡 N8N 回應內容: {response.text[:200]}...")
+
         if response.status_code == 200:
             logger.info("✅ 郵件數據已成功發送到 N8N")
             return {
                 "status": "success",
                 "message": f"郵件數據已成功發送到 N8N",
                 "sent_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "recipient": str(mail_data.recipient_email)
+                "recipient": str(mail_data.recipient_email),
+                "n8n_response": response.text[:100] if response.text else "無回應內容"
             }
         else:
-            raise HTTPException(status_code=500, detail=f"N8N webhook 回應錯誤: {response.status_code}")
+            logger.error(f"❌ N8N webhook 回應錯誤: {response.status_code} - {response.text}")
+            raise HTTPException(status_code=response.status_code, detail=f"N8N webhook 回應錯誤: {response.text}")
 
     except requests.exceptions.Timeout:
+        logger.error("❌ 請求超時")
         raise HTTPException(status_code=500, detail="請求超時")
     except requests.exceptions.ConnectionError:
+        logger.error("❌ 無法連接到 N8N webhook")
         raise HTTPException(status_code=500, detail="無法連接到 N8N webhook")
     except Exception as e:
         logger.error(f"❌ 發送郵件到 N8N 失敗: {str(e)}")
@@ -810,6 +889,67 @@ async def test_n8n_connection():
             "status": "error",
             "message": f"N8N 連接失敗: {str(e)}",
             "url": CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url']
+        }
+
+
+@app.get("/api/debug-stored-data")
+async def debug_stored_data():
+    """調試端點 - 查看當前存儲的數據結構"""
+    try:
+        if not stored_data:
+            return {
+                "status": "warning",
+                "message": "沒有存儲的數據",
+                "data": None,
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        # 構建示例郵件數據（不實際發送）
+        sample_mail_data = {
+            "recipient_email": "test@example.com",
+            "custom_message": "這是一個測試訊息"
+        }
+        
+        # 模擬郵件發送時的數據結構
+        sample_send_data = {
+            **stored_data,
+            "mail_config": {
+                "recipient_email": sample_mail_data["recipient_email"],
+                "sender_name": "市場分析系統",
+                "subject": "市場分析報告",
+                "priority": "normal",
+                "mail_type": "daily",
+                "custom_message": sample_mail_data["custom_message"],
+                "include_charts": False,
+                "include_recommendations": False,
+                "include_risk_warning": False
+            },
+            "system_info": {
+                "send_timestamp": datetime.now().isoformat(),
+                "system_version": CONFIG['SYSTEM_INFO']['version'],
+                "source": "debug-endpoint"
+            },
+            "sentiment_analysis": {
+                "score": stored_data.get("average_sentiment_score", 0),
+                "text": get_sentiment_text(stored_data.get("average_sentiment_score", 0)),
+                "emoji": get_market_emoji(stored_data.get("average_sentiment_score", 0))
+            }
+        }
+        
+        return {
+            "status": "success",
+            "message": "當前存儲的數據結構",
+            "json_data": sample_send_data,
+            "timestamp": datetime.now().isoformat(),
+            "webhook_url": CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url']
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ 調試數據端點錯誤: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"調試數據失敗: {str(e)}",
+            "timestamp": datetime.now().isoformat()
         }
 
 
