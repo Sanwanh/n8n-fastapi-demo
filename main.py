@@ -787,18 +787,18 @@ def create_mock_gold_data(period: str):
 async def send_mail_to_n8n(mail_data: MailSenderRequest):
     """發送郵件數據到 N8N webhook"""
     try:
-        logger.info(f"📧 收到郵件發送請求:")
-        logger.info(f"   收件人: {mail_data.recipient_email}")
-        logger.info(f"   自訂訊息: {mail_data.custom_message[:50] if mail_data.custom_message else '無'}...")
-        logger.info(f"   主題: {mail_data.subject}")
+        # logger.info(f"📧 收到郵件發送請求:")
+        # logger.info(f"   收件人: {mail_data.recipient_email}")
+        # logger.info(f"   自訂訊息: {mail_data.custom_message[:50] if mail_data.custom_message else '無'}...")
+        # logger.info(f"   主題: {mail_data.subject}")
         
         if not stored_data:
             logger.error("❌ 沒有可用的市場分析資料")
             raise HTTPException(status_code=400, detail="沒有可用的市場分析資料")
 
-        logger.info(f"📊 當前儲存數據: {len(stored_data)} 個欄位")
-        logger.info(f"   情感分數: {stored_data.get('average_sentiment_score', 'N/A')}")
-        logger.info(f"   內容長度: {len(stored_data.get('message_content', ''))} 字元")
+        # logger.info(f"📊 當前儲存數據: {len(stored_data)} 個欄位")
+        # logger.info(f"   情感分數: {stored_data.get('average_sentiment_score', 'N/A')}")
+        # logger.info(f"   內容長度: {len(stored_data.get('message_content', ''))} 字元")
 
         # 構建發送到 N8N 的數據結構
         send_data = {
@@ -843,11 +843,11 @@ async def send_mail_to_n8n(mail_data: MailSenderRequest):
             timeout=CONFIG['WEBHOOK_CONFIG']['timeout']
         )
 
-        logger.info(f"📡 N8N 回應狀態: {response.status_code}")
-        logger.info(f"📡 N8N 回應內容: {response.text[:200]}...")
+        # logger.info(f"📡 N8N 回應狀態: {response.status_code}")
+        # logger.info(f"📡 N8N 回應內容: {response.text[:200]}...")
 
         if response.status_code == 200:
-            logger.info("✅ 郵件數據已成功發送到 N8N")
+            # logger.info("✅ 郵件數據已成功發送到 N8N")
             return {
                 "status": "success",
                 "message": f"郵件數據已成功發送到 N8N",
@@ -1083,11 +1083,6 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 
 def main():
-    print("🚀 啟動市場分析系統 - 修正版...")
-    print(f"🌐 主網站: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}")
-    print(f"📧 郵件頁面: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}/mail")
-    print(f"📖 API文檔: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}/api/docs")
-    print(f"📊 系統版本: {CONFIG['SYSTEM_INFO']['version']}")
 
     uvicorn.run(
         app,
