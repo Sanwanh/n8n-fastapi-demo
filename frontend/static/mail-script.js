@@ -13,7 +13,7 @@ function updateSystemTime() {
 }
 
 // 初始化
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     loadMarketData();
     bindEvents();
     updateSystemTime();
@@ -135,25 +135,7 @@ function displayMarketData(data) {
                     </div>
                 </div>
 
-                <div class="summary-card">
-                    <div class="summary-icon">
-                        <i class="fas fa-shield-alt"></i>
-                    </div>
-                    <div class="summary-content">
-                        <div class="summary-label">風險評估</div>
-                        <div class="summary-value">${data.risk_assessment || '未評估'}</div>
-                    </div>
-                </div>
 
-                <div class="summary-card">
-                    <div class="summary-icon">
-                        <i class="fas fa-trending-up"></i>
-                    </div>
-                    <div class="summary-content">
-                        <div class="summary-label">趨勢方向</div>
-                        <div class="summary-value">${data.trend_direction || '未評估'}</div>
-                    </div>
-                </div>
             </div>
 
             <div class="content-preview">
@@ -295,10 +277,7 @@ function generateEmailContent(formData) {
     content += `📊 市場概況分析\n`;
     content += `${'─'.repeat(40)}\n`;
     content += `💹 情感分析分數：${currentMarketData.average_sentiment_score?.toFixed(3)}\n`;
-    content += `📈 情感評估：${getSentimentText(currentMarketData.average_sentiment_score)}\n`;
-    content += `🎯 信心水平：${currentMarketData.confidence_level || '未知'}\n`;
-    content += `📊 趨勢方向：${currentMarketData.trend_direction || '未知'}\n`;
-    content += `🛡️  風險評估：${currentMarketData.risk_assessment || '未知'}\n\n`;
+    content += `📈 情感評估：${getSentimentText(currentMarketData.average_sentiment_score)}\n\n`;
 
     // 詳細分析
     if (currentMarketData.message_content) {

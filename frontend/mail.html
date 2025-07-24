@@ -259,15 +259,15 @@
                             <span class="summary-value">${data.market_date || '今日'}</span>
                         </div>
                         <div class="summary-item">
-                            <span class="summary-label">風險評估:</span>
-                            <span class="summary-value">${data.risk_assessment || '中等'}</span>
+                            <span class="summary-label">接收時間:</span>
+                            <span class="summary-value">${data.received_time || '未知'}</span>
                         </div>
                     </div>
 
                     <div class="content-preview">
                         <h5><i class="fas fa-newspaper"></i> 分析內容摘要</h5>
                         <div class="content-snippet">
-                            ${formatContentPreview(data.message_content)}
+                            ${formatContentPreview(data.raw_data?.message?.content || data.message_content || '無分析內容')}
                         </div>
                     </div>
                 </div>

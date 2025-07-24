@@ -10,6 +10,21 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chartjs-adapter-moment.min.js"></script>
+    <script
+        src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/2.1.0/chartjs-plugin-annotation.min.js"></script>
+    <script>
+        // 確保註解插件正確載入
+        if (typeof Chart !== 'undefined') {
+            console.log('✅ Chart.js 已載入');
+            console.log('Chart.js 版本:', Chart.version);
+        }
+        // 檢查註解插件是否正確載入
+        if (typeof Chart !== 'undefined' && Chart.registry && Chart.registry.getController) {
+            console.log('✅ Chart.js 註解插件已載入');
+        } else {
+            console.warn('⚠️ Chart.js 註解插件未載入');
+        }
+    </script>
     <script>
         // 確保 Chart.js 時間適配器正確載入
         if (typeof Chart !== 'undefined') {
@@ -128,6 +143,16 @@
                         </div>
                     </div>
 
+                    <div class="cross-signal-display" id="cross-signal-display" style="display: none;">
+                        <h3><i class="fas fa-signal"></i> 交叉信號</h3>
+                        <div class="signal-content">
+                            <div class="signal-item" id="signal-status">
+                                <span class="signal-label">信號狀態</span>
+                                <span class="signal-value" id="signal-value">--</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="chart-section">
                         <div class="chart-header">
                             <h3><i class="fas fa-chart-area"></i> 價格走勢圖</h3>
@@ -142,12 +167,12 @@
                                         <span class="toggle-label">MA20</span>
                                     </label>
                                     <label class="line-toggle">
-                                        <input type="checkbox" id="show-monthly" checked>
-                                        <span class="toggle-label">月平均</span>
+                                        <input type="checkbox" id="show-ma125" checked>
+                                        <span class="toggle-label">MA125</span>
                                     </label>
                                     <label class="line-toggle">
-                                        <input type="checkbox" id="show-yearly" checked>
-                                        <span class="toggle-label">年平均</span>
+                                        <input type="checkbox" id="show-quarterly" checked>
+                                        <span class="toggle-label">季平均</span>
                                     </label>
                                 </div>
                             </div>
@@ -245,8 +270,8 @@
         let detailsVisible = false;
         let showMA5 = true;
         let showMA20 = true;
-        let showMonthly = true;
-        let showYearly = true;
+        let showMA125 = true;
+        let showQuarterly = true;
 
         // ===== 初始化 =====
         document.addEventListener('DOMContentLoaded', function () {
@@ -309,8 +334,8 @@
 
                     if (lineType === 'ma5') showMA5 = this.checked;
                     if (lineType === 'ma20') showMA20 = this.checked;
-                    if (lineType === 'monthly') showMonthly = this.checked;
-                    if (lineType === 'yearly') showYearly = this.checked;
+                    if (lineType === 'ma125') showMA125 = this.checked;
+                    if (lineType === 'quarterly') showQuarterly = this.checked;
 
                     if (goldPriceData) {
                         createGoldChart(goldPriceData);
@@ -387,6 +412,7 @@
 
                     displayGoldPrice(result.data);
                     updateTechnicalIndicators(result.data.technical_indicators || {});
+                    updateCrossSignalDisplay(result.data.cross_signal);
 
                     // 檢查圖表數據
                     console.log('📊 準備創建圖表，數據檢查:');
@@ -477,29 +503,7 @@
                         <div class="data-value">${data.market_date || '未知'}</div>
                     </div>
 
-                    <div class="data-row">
-                        <div class="data-label">
-                            <i class="fas fa-gauge"></i>
-                            信心水平
-                        </div>
-                        <div class="data-value">${data.confidence_level || '未評估'}</div>
-                    </div>
 
-                    <div class="data-row">
-                        <div class="data-label">
-                            <i class="fas fa-trending-up"></i>
-                            趨勢方向
-                        </div>
-                        <div class="data-value">${data.trend_direction || '未評估'}</div>
-                    </div>
-
-                    <div class="data-row">
-                        <div class="data-label">
-                            <i class="fas fa-shield-alt"></i>
-                            風險評估
-                        </div>
-                        <div class="data-value">${data.risk_assessment || '未評估'}</div>
-                    </div>
 
                     <div class="data-row full-width">
                         <div class="data-label">
@@ -548,7 +552,7 @@
                     <div class="price-main">
                         <div class="current-price">
                             <span class="price-value">$${data.current_price?.toFixed(2) || 'N/A'}</span>
-                            <span class="price-unit">${data.unit || 'USD/oz'}</span>
+                            <span class="price-unit">${data.unit || 'USD/oz'} (USD)</span>
                         </div>
                         <div class="price-change ${priceChangeClass}">
                             <i class="fas ${priceChangeIcon}"></i>
@@ -575,10 +579,7 @@
                                 <span class="stat-label">波動率</span>
                                 <span class="stat-value">${data.volatility?.toFixed(2) || 'N/A'}</span>
                             </div>
-                            <div class="stat-item">
-                                <span class="stat-label">交易量</span>
-                                <span class="stat-value">${data.volume_24h?.toLocaleString() || 'N/A'}</span>
-                            </div>
+
                             <div class="stat-item">
                                 <span class="stat-label">市場狀態</span>
                                 <span class="stat-value market-${data.market_status}">${getMarketStatusText(data.market_status)}</span>
@@ -762,117 +763,105 @@
                 }
             }
 
-            // 添加每月平均線
-            if (showMonthly && data.monthly_average_line && data.monthly_average_line.length > 0) {
-                console.log('🔍 處理月平均線數據...');
-                console.log('月平均線原始數據:', data.monthly_average_line);
+            // 添加MA125線
+            if (showMA125 && data.ma_125_line && data.ma_125_line.length > 0) {
+                console.log('🔍 處理MA125數據...');
+                console.log('MA125原始數據:', data.ma_125_line);
 
-                // 創建月平均線數據映射
-                const monthlyMap = {};
-                data.monthly_average_line.forEach(d => {
-                    monthlyMap[d.time] = parseFloat(d.price) || 0;
+                // 創建MA125數據映射
+                const ma125Map = {};
+                data.ma_125_line.forEach(d => {
+                    ma125Map[d.time] = parseFloat(d.price) || 0;
                 });
 
-                console.log('月平均線映射樣本:', Object.keys(monthlyMap).slice(0, 5));
-                console.log('月平均線映射值樣本:', Object.values(monthlyMap).slice(0, 5));
+                console.log('MA125映射樣本:', Object.keys(ma125Map).slice(0, 5));
+                console.log('MA125映射值樣本:', Object.values(ma125Map).slice(0, 5));
 
-                // 對齊到主數據的時間軸 - 修正對齊邏輯
-                const alignedMonthlyPrices = validLabels.map(label => {
-                    // 直接使用日期字符串進行匹配
-                    return monthlyMap[label] || null;
+                // 對齊到主數據的時間軸
+                const alignedMA125Prices = validLabels.map(label => {
+                    return ma125Map[label] || null;
                 });
 
-                console.log('月平均線對齊數據點數:', alignedMonthlyPrices.filter(p => p !== null).length);
-                console.log('月平均線對齊數據樣本:', alignedMonthlyPrices.slice(0, 10));
-                console.log('月平均線數據類型檢查:', {
-                    total: alignedMonthlyPrices.length,
-                    valid: alignedMonthlyPrices.filter(p => p !== null).length,
-                    null: alignedMonthlyPrices.filter(p => p === null).length,
-                    zero: alignedMonthlyPrices.filter(p => p === 0).length,
-                    positive: alignedMonthlyPrices.filter(p => p > 0).length
-                });
+                console.log('MA125對齊數據點數:', alignedMA125Prices.filter(p => p !== null).length);
+                console.log('MA125對齊數據樣本:', alignedMA125Prices.slice(0, 10));
 
-                if (alignedMonthlyPrices.filter(p => p !== null).length > 0) {
-                    // 創建月平均線數據集，使用與主數據相同的格式
+                if (alignedMA125Prices.filter(p => p !== null).length > 0) {
                     datasets.push({
-                        label: '月平均線',
-                        data: alignedMonthlyPrices,
+                        label: 'MA125',
+                        data: alignedMA125Prices,
                         borderColor: '#8B5CF6',
                         backgroundColor: 'transparent',
-                        borderWidth: 3,
+                        borderWidth: 2,
                         fill: false,
                         tension: 0.4,
-                        pointRadius: 5,
-                        pointHoverRadius: 8,
-                        pointBackgroundColor: '#8B5CF6',
-                        pointBorderColor: '#FFFFFF',
-                        pointBorderWidth: 2,
-                        borderDash: [8, 4],
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        borderDash: [6, 3],
                         spanGaps: true
                     });
                 } else {
-                    console.log('⚠️ 月平均線沒有有效數據點');
+                    console.log('⚠️ MA125沒有有效數據點');
                 }
             } else {
-                console.log('⚠️ 月平均線數據不存在或為空');
-                console.log('showMonthly:', showMonthly);
-                console.log('data.monthly_average_line 存在:', !!data.monthly_average_line);
-                console.log('data.monthly_average_line 長度:', data.monthly_average_line?.length);
+                console.log('⚠️ MA125數據不存在或為空');
+                console.log('showMA125:', showMA125);
+                console.log('data.ma_125_line 存在:', !!data.ma_125_line);
+                console.log('data.ma_125_line 長度:', data.ma_125_line?.length);
             }
 
-            // 添加年平均價格線
-            if (showYearly && data.yearly_average_line && data.yearly_average_line.length > 0) {
-                console.log('🔍 處理年平均價格線數據...');
-                console.log('年平均價格線原始數據:', data.yearly_average_line);
+            // 添加季平均均線
+            if (showQuarterly && data.quarterly_average_line && data.quarterly_average_line.length > 0) {
+                console.log('🔍 處理季平均均線數據...');
+                console.log('季平均均線原始數據:', data.quarterly_average_line);
 
-                // 創建年平均價格線數據映射
-                const yearlyMap = {};
-                data.yearly_average_line.forEach(d => {
-                    yearlyMap[d.time] = parseFloat(d.price) || 0;
+                // 創建季平均均線數據映射
+                const quarterlyMap = {};
+                data.quarterly_average_line.forEach(d => {
+                    quarterlyMap[d.time] = parseFloat(d.price) || 0;
                 });
 
-                console.log('年平均價格線映射樣本:', Object.keys(yearlyMap).slice(0, 5));
-                console.log('年平均價格線映射值樣本:', Object.values(yearlyMap).slice(0, 5));
+                console.log('季平均均線映射樣本:', Object.keys(quarterlyMap).slice(0, 5));
+                console.log('季平均均線映射值樣本:', Object.values(quarterlyMap).slice(0, 5));
 
-                // 對齊到主數據的時間軸 - 修正對齊邏輯
-                const alignedYearlyPrices = validLabels.map(label => {
-                    // 直接使用日期字符串進行匹配
-                    return yearlyMap[label] || null;
+                // 對齊到主數據的時間軸
+                const alignedQuarterlyPrices = validLabels.map(label => {
+                    return quarterlyMap[label] || null;
                 });
 
-                console.log('年平均價格線對齊數據點數:', alignedYearlyPrices.filter(p => p !== null).length);
-                console.log('年平均價格線對齊數據樣本:', alignedYearlyPrices.slice(0, 10));
-                console.log('年平均價格線數據類型檢查:', {
-                    total: alignedYearlyPrices.length,
-                    valid: alignedYearlyPrices.filter(p => p !== null).length,
-                    null: alignedYearlyPrices.filter(p => p === null).length,
-                    zero: alignedYearlyPrices.filter(p => p === 0).length,
-                    positive: alignedYearlyPrices.filter(p => p > 0).length
-                });
+                console.log('季平均均線對齊數據點數:', alignedQuarterlyPrices.filter(p => p !== null).length);
+                console.log('季平均均線對齊數據樣本:', alignedQuarterlyPrices.slice(0, 10));
 
-                if (alignedYearlyPrices.filter(p => p !== null).length > 0) {
-                    // 創建年平均價格線數據集，使用與主數據相同的格式
+                if (alignedQuarterlyPrices.filter(p => p !== null).length > 0) {
                     datasets.push({
-                        label: '年平均價格',
-                        data: alignedYearlyPrices,
+                        label: '季平均均線',
+                        data: alignedQuarterlyPrices,
                         borderColor: '#FF8C00',
                         backgroundColor: 'transparent',
                         borderWidth: 2,
                         fill: false,
-                        tension: 0,
+                        tension: 0.4,
                         pointRadius: 0,
                         pointHoverRadius: 4,
-                        borderDash: [10, 5],
+                        borderDash: [6, 3],
                         spanGaps: true
                     });
                 } else {
-                    console.log('⚠️ 年平均價格線沒有有效數據點');
+                    console.log('⚠️ 季平均均線沒有有效數據點');
                 }
             } else {
-                console.log('⚠️ 年平均價格線數據不存在或為空');
-                console.log('showYearly:', showYearly);
-                console.log('data.yearly_average_line 存在:', !!data.yearly_average_line);
-                console.log('data.yearly_average_line 長度:', data.yearly_average_line?.length);
+                console.log('⚠️ 季平均均線數據不存在或為空');
+                console.log('showQuarterly:', showQuarterly);
+                console.log('data.quarterly_average_line 存在:', !!data.quarterly_average_line);
+                console.log('data.quarterly_average_line 長度:', data.quarterly_average_line?.length);
+            }
+
+            // 檢查交叉信號
+            let crossSignalText = '';
+            if (data.cross_signal) {
+                crossSignalText = data.cross_signal.message;
+                console.log('📊 交叉信號:', data.cross_signal);
+                console.log('📊 信號狀態:', data.cross_signal.status);
+                console.log('📊 信號消息:', crossSignalText);
             }
 
             const config = {
@@ -886,7 +875,8 @@
                     maintainAspectRatio: false,
                     layout: {
                         padding: {
-                            bottom: 20   // 整張圖底部多留 20px
+                            bottom: 20,   // 整張圖底部多留 20px
+                            top: crossSignalText ? 40 : 20  // 如果有交叉信號，頂部多留空間
                         }
                     },
                     elements: {
@@ -922,7 +912,28 @@
                                     return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
                                 }
                             }
-                        }
+                        },
+                        annotation: crossSignalText ? {
+                            annotations: {
+                                crossSignal: {
+                                    type: 'label',
+                                    xValue: 0.95,
+                                    yValue: 0.95,
+                                    backgroundColor: data.cross_signal.status === 'golden_cross' ? 'rgba(16, 185, 129, 0.9)' :
+                                        data.cross_signal.status === 'death_cross' ? 'rgba(239, 68, 68, 0.9)' :
+                                            'rgba(100, 116, 139, 0.9)',
+                                    content: [crossSignalText],
+                                    color: '#ffffff',
+                                    font: {
+                                        size: 12,
+                                        weight: 'bold'
+                                    },
+                                    padding: 8,
+                                    borderRadius: 4,
+                                    position: 'end'
+                                }
+                            }
+                        } : {}
                     },
                     scales: {
                         x: {
@@ -1061,6 +1072,46 @@
             }
         }
 
+        // ===== 更新交叉信號顯示 =====
+        function updateCrossSignalDisplay(crossSignal) {
+            console.log('📊 更新交叉信號顯示:', crossSignal);
+
+            const signalDisplay = document.getElementById('cross-signal-display');
+            const signalValue = document.getElementById('signal-value');
+
+            if (crossSignal && crossSignal.status) {
+                signalDisplay.style.display = 'block';
+
+                // 設置信號狀態
+                let statusText = '';
+                let statusClass = '';
+
+                switch (crossSignal.status) {
+                    case 'golden_cross':
+                        statusText = '🟢 黃金交叉';
+                        statusClass = 'signal-golden';
+                        break;
+                    case 'death_cross':
+                        statusText = '🔴 死亡交叉';
+                        statusClass = 'signal-death';
+                        break;
+                    case 'normal':
+                        statusText = '⚪ 正常';
+                        statusClass = 'signal-normal';
+                        break;
+                    default:
+                        statusText = '⚪ 正常';
+                        statusClass = 'signal-normal';
+                }
+
+                signalValue.textContent = statusText;
+                signalValue.className = `signal-value ${statusClass}`;
+
+            } else {
+                signalDisplay.style.display = 'none';
+            }
+        }
+
         // ===== 更新詳細日誌 =====
         function updateDetailedLogs(goldData) {
             const detailsContainer = document.getElementById('detailed-logs');
@@ -1095,7 +1146,6 @@
                         <p><strong>24小時最低:</strong> ${goldData.data.low_24h?.toFixed(2) || 'N/A'}</p>
                         <p><strong>平均價格:</strong> ${goldData.data.avg_price?.toFixed(2) || 'N/A'}</p>
                         <p><strong>波動率:</strong> ${goldData.data.volatility?.toFixed(2) || 'N/A'}</p>
-                        <p><strong>交易量:</strong> ${goldData.data.volume_24h?.toLocaleString() || 'N/A'}</p>
                         <p><strong>市場狀態:</strong> ${getMarketStatusText(goldData.data.market_status)}</p>
                         <p><strong>貨幣單位:</strong> ${goldData.data.currency || 'USD'}</p>
                         <p><strong>數據點數量:</strong> ${goldData.data.data_points || 0}</p>
@@ -1132,9 +1182,7 @@
                         <p><strong>情感分數:</strong> ${marketData.average_sentiment_score?.toFixed(3) || 'N/A'}</p>
                         <p><strong>情感描述:</strong> ${getSentimentText(marketData.average_sentiment_score)}</p>
                         <p><strong>市場日期:</strong> ${marketData.market_date || '未知'}</p>
-                        <p><strong>信心水平:</strong> ${marketData.confidence_level || '未評估'}</p>
-                        <p><strong>趨勢方向:</strong> ${marketData.trend_direction || '未評估'}</p>
-                        <p><strong>風險評估:</strong> ${marketData.risk_assessment || '未評估'}</p>
+
                         <p><strong>接收時間:</strong> ${marketData.received_time || '未知'}</p>
                         <p><strong>內容長度:</strong> ${marketData.message_content?.length || 0} 字元</p>
                     </div>
@@ -1159,7 +1207,6 @@
                                         <th>最高</th>
                                         <th>最低</th>
                                         <th>收盤</th>
-                                        <th>交易量</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1170,7 +1217,6 @@
                                             <td>${point.high?.toFixed(2) || 'N/A'}</td>
                                             <td>${point.low?.toFixed(2) || 'N/A'}</td>
                                             <td>${point.price?.toFixed(2) || 'N/A'}</td>
-                                            <td>${point.volume?.toLocaleString() || 'N/A'}</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -1180,26 +1226,26 @@
                 </div>`);
             }
 
-            // 每月平均線詳情
-            if (goldData.data?.monthly_average_line && goldData.data.monthly_average_line.length > 0) {
-                const monthlyData = goldData.data.monthly_average_line;
+            // 季平均均線詳情
+            if (goldData.data?.quarterly_average_line && goldData.data.quarterly_average_line.length > 0) {
+                const quarterlyData = goldData.data.quarterly_average_line;
                 logs.push(`<div class="log-section">
-                    <h4><i class="fas fa-calendar-alt"></i> 每月平均線詳情</h4>
+                    <h4><i class="fas fa-calendar-alt"></i> 季平均均線詳情</h4>
                     <div class="log-content">
-                        <p><strong>數據點數:</strong> ${monthlyData.length}</p>
-                        <p><strong>時間範圍:</strong> ${new Date(monthlyData[0].time).toLocaleDateString('zh-TW')} - ${new Date(monthlyData[monthlyData.length - 1].time).toLocaleDateString('zh-TW')}</p>
+                        <p><strong>數據點數:</strong> ${quarterlyData.length}</p>
+                        <p><strong>時間範圍:</strong> ${new Date(quarterlyData[0].time).toLocaleDateString('zh-TW')} - ${new Date(quarterlyData[quarterlyData.length - 1].time).toLocaleDateString('zh-TW')}</p>
                         <div class="data-table">
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>月份</th>
+                                        <th>季度</th>
                                         <th>平均價格</th>
                                         <th>變化</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${monthlyData.map((point, index) => {
-                    const prevPrice = index > 0 ? monthlyData[index - 1].price : point.price;
+                                    ${quarterlyData.map((point, index) => {
+                    const prevPrice = index > 0 ? quarterlyData[index - 1].price : point.price;
                     const change = point.price - prevPrice;
                     const changePercent = (change / prevPrice * 100);
                     return `
@@ -1223,7 +1269,6 @@
             if (goldData.data?.chart_data && goldData.data.chart_data.length > 0) {
                 const chartData = goldData.data.chart_data;
                 const prices = chartData.map(d => d.price).filter(p => p && !isNaN(p));
-                const volumes = chartData.map(d => d.volume).filter(v => v && !isNaN(v));
 
                 logs.push(`<div class="log-section">
                     <h4><i class="fas fa-chart-bar"></i> 完整年度數據統計</h4>
@@ -1233,8 +1278,6 @@
                         <p><strong>價格範圍:</strong> ${Math.min(...prices).toFixed(2)} - ${Math.max(...prices).toFixed(2)}</p>
                         <p><strong>年度平均價格:</strong> ${(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2)}</p>
                         <p><strong>年度價格標準差:</strong> ${calculateStandardDeviation(prices).toFixed(2)}</p>
-                        <p><strong>總交易量:</strong> ${volumes.reduce((a, b) => a + b, 0).toLocaleString()}</p>
-                        <p><strong>平均日交易量:</strong> ${(volumes.reduce((a, b) => a + b, 0) / volumes.length).toLocaleString()}</p>
                         <p><strong>數據起始日期:</strong> ${new Date(chartData[0].time).toLocaleDateString('zh-TW')}</p>
                         <p><strong>數據結束日期:</strong> ${new Date(chartData[chartData.length - 1].time).toLocaleDateString('zh-TW')}</p>
                         <p><strong>年度漲跌:</strong> ${((prices[prices.length - 1] - prices[0]) / prices[0] * 100).toFixed(2)}%</p>
@@ -1623,6 +1666,83 @@
         /* 強制X軸標籤水平顯示 */
         .chart-container canvas {
             transform: none !important;
+        }
+
+        /* 交叉信號顯示樣式 */
+        .cross-signal-display {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: var(--bg-glass);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        .cross-signal-display h3 {
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .signal-content {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .signal-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        .signal-label {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .signal-value {
+            font-weight: bold;
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+        }
+
+        .signal-golden {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .signal-death {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .signal-normal {
+            background: rgba(100, 116, 139, 0.2);
+            color: #64748b;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+
+        .signal-message-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .signal-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
         }
     </style>
 </body>

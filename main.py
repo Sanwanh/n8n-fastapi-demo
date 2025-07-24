@@ -23,7 +23,7 @@ try:
     from fastapi.responses import JSONResponse, HTMLResponse
     from fastapi.staticfiles import StaticFiles
     from fastapi.middleware.cors import CORSMiddleware
-    from pydantic import BaseModel, EmailStr, validator
+    from pydantic import BaseModel, EmailStr, field_validator
     import uvicorn
     import requests
     import yfinance as yf
@@ -87,7 +87,8 @@ class N8NDataExtended(BaseModel):
     trend_direction: Optional[str] = None
     risk_assessment: Optional[str] = None
 
-    @validator('average_sentiment_score')
+    @field_validator('average_sentiment_score')
+    @classmethod
     def validate_sentiment_score(cls, v):
         if not -1.0 <= v <= 1.0:
             raise ValueError('情感分數必須在 -1.0 到 1.0 之間')
@@ -106,13 +107,45 @@ class MailSenderRequest(BaseModel):
     include_risk_warning: bool = False
 
 
+# 生命週期管理
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """應用生命週期管理"""
+    # 啟動時
+    logger.info("🚀 市場分析系統啟動 - 修正版")
+    logger.info(f"📡 N8N Webhook: {CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url']}")
+    logger.info(f"🌐 主網站: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}")
+    logger.info(f"📧 郵件頁面: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}/mail")
+    logger.info(f"📖 API文檔: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}/api/docs")
+
+    # 測試黃金價格 API
+    try:
+        logger.info("🔍 測試黃金價格 API...")
+        import yfinance as yf
+        test_ticker = yf.Ticker("GC=F")
+        test_data = test_ticker.history(period="1d")
+        if not test_data.empty:
+            logger.info("✅ 黃金價格 API 連接正常")
+        else:
+            logger.warning("⚠️ 黃金價格 API 可能有問題，將使用模擬數據")
+    except Exception as e:
+        logger.warning(f"⚠️ 黃金價格 API 測試失敗: {str(e)}，將使用模擬數據")
+    
+    yield
+    
+    # 關閉時
+    logger.info("🛑 市場分析系統關閉中...")
+
 # 初始化 FastAPI
 app = FastAPI(
     title=CONFIG['SYSTEM_INFO']['name'],
     description=CONFIG['SYSTEM_INFO']['description'],
     version=CONFIG['SYSTEM_INFO']['version'],
     docs_url="/api/docs",
-    redoc_url="/api/redoc"
+    redoc_url="/api/redoc",
+    lifespan=lifespan
 )
 
 # CORS 設定
@@ -392,11 +425,14 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
             ma_lines["ma_20"] = [{"time": idx.strftime('%Y-%m-%d'), "price": float(val)} 
                                 for idx, val in ma_20_data.items()]
 
-        # 計算每月平均線
-        monthly_average_line = calculate_monthly_average_line(hist_data)
+        # 計算MA125線（替代月平均線）
+        ma_125_line = calculate_ma125_line(hist_data)
 
-        # 計算年平均價格線
-        yearly_average_line = calculate_yearly_average_line(hist_data)
+        # 計算季平均價格線（替代年平均線）
+        quarterly_average_line = calculate_quarterly_average_line(hist_data)
+
+        # 檢測黃金交叉和死亡交叉
+        cross_signal = detect_golden_death_cross(hist_data)
 
         # 判斷市場狀態
         market_status = determine_market_status()
@@ -418,15 +454,16 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
                 "low_24h": round(stats['min_price'], 2),
                 "avg_price": round(stats['avg_price'], 2),
                 "volatility": round(stats['volatility'], 2),
-                "volume_24h": int(hist_data['Volume'].sum()) if not hist_data['Volume'].isna().all() else 0,
+                "volume_24h": 0,  # 移除交易量顯示
                 "currency": "USD",
                 "unit": "per ounce",
                 "last_updated": stats['latest_date'].isoformat(),
                 "last_updated_formatted": latest_processing_time,
                 "chart_data": chart_data,
                 "ma_lines": ma_lines,
-                "monthly_average_line": monthly_average_line,
-                "yearly_average_line": yearly_average_line,
+                "ma_125_line": ma_125_line,
+                "quarterly_average_line": quarterly_average_line,
+                "cross_signal": cross_signal,
                 "market_status": market_status,
                 "technical_indicators": technical_indicators,
                 "period": period,
@@ -757,6 +794,134 @@ def calculate_monthly_average_line(hist_data):
     except Exception as e:
         logger.warning(f"⚠️ 每月平均線計算錯誤: {e}")
         return []
+
+
+def calculate_quarterly_average_line(hist_data):
+    """計算季平均均線 - 使用MA90概念，生成連續線條"""
+    try:
+        # 確保數據有日期索引
+        if not isinstance(hist_data.index, pd.DatetimeIndex):
+            hist_data.index = pd.to_datetime(hist_data.index)
+        
+        # 統一時區處理 - 轉換為無時區的日期
+        hist_data.index = hist_data.index.tz_localize(None)
+        
+        # 計算90日移動平均線（季線概念）
+        ma90 = hist_data['Close'].rolling(window=90).mean()
+        
+        # 轉換為圖表數據格式 - 保留所有數據點以形成連續線條
+        quarterly_line_data = []
+        for date, price in ma90.items():
+            if not pd.isna(price):  # 只添加非NaN的數據點
+                quarterly_line_data.append({
+                    'time': date.strftime('%Y-%m-%d'),
+                    'price': float(price)
+                })
+        
+        logger.info(f"📊 季平均均線(MA90)計算完成，共 {len(quarterly_line_data)} 個數據點")
+        if len(quarterly_line_data) > 0:
+            prices = [point['price'] for point in quarterly_line_data]
+            min_price = min(prices)
+            max_price = max(prices)
+            logger.info(f"    季平均價格範圍: ${min_price:.2f} - ${max_price:.2f}")
+        
+        return quarterly_line_data
+        
+    except Exception as e:
+        logger.warning(f"⚠️ 季平均均線計算錯誤: {e}")
+        return []
+
+
+def calculate_ma125_line(hist_data):
+    """計算MA125移動平均線"""
+    try:
+        # 確保數據有日期索引
+        if not isinstance(hist_data.index, pd.DatetimeIndex):
+            hist_data.index = pd.to_datetime(hist_data.index)
+        
+        if len(hist_data) < 125:
+            logger.warning("⚠️ 數據不足125天，無法計算MA125")
+            return []
+        
+        # 計算MA125
+        ma_125_data = hist_data['Close'].rolling(window=125).mean().dropna()
+        
+        # 轉換為圖表數據格式
+        ma_125_line_data = []
+        for idx, val in ma_125_data.items():
+            ma_125_line_data.append({
+                'time': idx.strftime('%Y-%m-%d'),
+                'price': float(val)
+            })
+        
+        logger.info(f"📊 MA125計算完成，共 {len(ma_125_line_data)} 個數據點")
+        logger.info(f"    最新MA125值: ${ma_125_data.iloc[-1]:.2f}")
+        
+        return ma_125_line_data
+        
+    except Exception as e:
+        logger.warning(f"⚠️ MA125計算錯誤: {e}")
+        return []
+
+
+def detect_golden_death_cross(hist_data):
+    """檢測黃金交叉和死亡交叉 - 使用MA20穿越MA5"""
+    try:
+        if len(hist_data) < 20:
+            return {"golden_cross": False, "death_cross": False, "message": "", "status": "normal"}
+        
+        # 計算MA20和MA5
+        ma_20 = hist_data['Close'].rolling(window=20).mean()
+        ma_5 = hist_data['Close'].rolling(window=5).mean()
+        
+        # 獲取最近幾個數據點進行比較
+        recent_data = hist_data.tail(10)
+        recent_ma20 = ma_20.tail(10)
+        recent_ma5 = ma_5.tail(10)
+        
+        # 檢查是否有足夠的數據
+        if recent_ma20.isna().all() or recent_ma5.isna().all():
+            return {"golden_cross": False, "death_cross": False, "message": "", "status": "normal"}
+        
+        # 獲取最新的MA值，確保轉換為Python原生類型
+        current_ma20 = float(recent_ma20.iloc[-1])
+        current_ma5 = float(recent_ma5.iloc[-1])
+        prev_ma20 = float(recent_ma20.iloc[-2]) if len(recent_ma20) > 1 else current_ma20
+        prev_ma5 = float(recent_ma5.iloc[-2]) if len(recent_ma5) > 1 else current_ma5
+        
+        # 檢測黃金交叉（MA20從下方穿越MA5）
+        golden_cross = bool((prev_ma20 < prev_ma5) and (current_ma20 > current_ma5))
+        
+        # 檢測死亡交叉（MA20從上方穿越MA5）
+        death_cross = bool((prev_ma20 > prev_ma5) and (current_ma20 < current_ma5))
+        
+        message = ""
+        status = "normal"
+        if golden_cross:
+            message = "🟢 黃金交叉：MA20穿越MA5向上，看漲信號"
+            status = "golden_cross"
+            logger.info(f"🟢 檢測到黃金交叉: MA20=${current_ma20:.2f}, MA5=${current_ma5:.2f}")
+        elif death_cross:
+            message = "🔴 死亡交叉：MA20穿越MA5向下，看跌信號"
+            status = "death_cross"
+            logger.info(f"🔴 檢測到死亡交叉: MA20=${current_ma20:.2f}, MA5=${current_ma5:.2f}")
+        else:
+            message = "⚪ 正常：MA20與MA5無交叉信號"
+            status = "normal"
+            logger.info(f"⚪ 無交叉信號: MA20=${current_ma20:.2f}, MA5=${current_ma5:.2f}")
+        
+        return {
+            "golden_cross": golden_cross,
+            "death_cross": death_cross,
+            "status": status,
+            "message": message,
+            "current_ma20": current_ma20,
+            "current_ma5": current_ma5
+        }
+        
+    except Exception as e:
+        logger.warning(f"⚠️ 交叉檢測錯誤: {e}")
+        return {"golden_cross": False, "death_cross": False, "message": "", "status": "normal"}
 
 
 def calculate_yearly_average_line(hist_data):
@@ -1141,29 +1306,6 @@ def get_market_emoji(score: float) -> str:
         return "📉🔴😟"
     else:
         return "💥📉😱"
-
-
-# 啟動事件
-@app.on_event("startup")
-async def startup_event():
-    logger.info("🚀 市場分析系統啟動 - 修正版")
-    logger.info(f"📡 N8N Webhook: {CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url']}")
-    logger.info(f"🌐 主網站: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}")
-    logger.info(f"📧 郵件頁面: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}/mail")
-    logger.info(f"📖 API文檔: http://{CONFIG['SERVER_CONFIG']['host']}:{CONFIG['SERVER_CONFIG']['port']}/api/docs")
-
-    # 測試黃金價格 API
-    try:
-        logger.info("🔍 測試黃金價格 API...")
-        import yfinance as yf
-        test_ticker = yf.Ticker("GC=F")
-        test_data = test_ticker.history(period="1d")
-        if not test_data.empty:
-            logger.info("✅ 黃金價格 API 連接正常")
-        else:
-            logger.warning("⚠️ 黃金價格 API 可能有問題，將使用模擬數據")
-    except Exception as e:
-        logger.warning(f"⚠️ 黃金價格 API 測試失敗: {str(e)}，將使用模擬數據")
 
 
 # 錯誤處理
