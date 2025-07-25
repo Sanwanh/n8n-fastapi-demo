@@ -125,15 +125,20 @@ body {
 }
 
 @keyframes float {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: translateY(0px) rotate(0deg) scale(1);
     }
+
     25% {
         transform: translateY(-25px) rotate(90deg) scale(1.1);
     }
+
     50% {
         transform: translateY(-10px) rotate(180deg) scale(0.9);
     }
+
     75% {
         transform: translateY(15px) rotate(270deg) scale(1.05);
     }
@@ -178,15 +183,50 @@ body {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    font-size: 1.25rem;
     font-weight: 700;
+    font-size: 1.25rem;
     color: var(--text-primary);
 }
 
-.nav-brand i {
-    color: var(--gold);
+.brand-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--success), var(--primary));
+    border-radius: 50%;
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+}
+
+.brand-logo:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-lg);
+}
+
+.logo-emoji {
     font-size: 1.5rem;
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+
+    0%,
+    20%,
+    50%,
+    80%,
+    100% {
+        transform: translateY(0);
+    }
+
+    40% {
+        transform: translateY(-5px);
+    }
+
+    60% {
+        transform: translateY(-3px);
+    }
 }
 
 .nav-links {
@@ -306,29 +346,54 @@ body {
 }
 
 .header-icon {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     width: 80px;
     height: 80px;
-    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
-    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    border-radius: 50%;
     margin-bottom: 1.5rem;
     box-shadow: var(--shadow-gold);
-    animation: pulse-gold 3s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+}
+
+.header-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--success), var(--primary));
+    border-radius: 50%;
+    transition: var(--transition);
+}
+
+.header-logo:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-lg);
+}
+
+.header-emoji {
+    font-size: 3rem;
+    animation: pulse-gold 2s infinite;
 }
 
 .header-icon i {
-    font-size: 2rem;
+    font-size: 2.5rem;
     color: var(--bg-primary);
-    text-shadow: none;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
 }
 
 @keyframes pulse-gold {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: scale(1);
         box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
     }
+
     50% {
         transform: scale(1.05);
         box-shadow: 0 0 0 20px rgba(255, 215, 0, 0);
@@ -442,7 +507,8 @@ body {
 }
 
 /* 狀態指示器 */
-.status-indicator, .price-status {
+.status-indicator,
+.price-status {
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -452,7 +518,8 @@ body {
     border: 1px solid var(--border);
 }
 
-.indicator-dot, .status-dot {
+.indicator-dot,
+.status-dot {
     width: 10px;
     height: 10px;
     border-radius: 50%;
@@ -460,27 +527,33 @@ body {
     animation: pulse-dot 2s ease-in-out infinite;
 }
 
-.indicator-dot.connected, .status-dot.connected {
+.indicator-dot.connected,
+.status-dot.connected {
     background: var(--success);
     box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
 }
 
-.indicator-dot.error, .status-dot.error {
+.indicator-dot.error,
+.status-dot.error {
     background: var(--error);
     box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
 }
 
-.indicator-text, .status-text {
+.indicator-text,
+.status-text {
     font-size: 0.875rem;
     color: var(--text-secondary);
     font-weight: 500;
 }
 
 @keyframes pulse-dot {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 0.8;
         transform: scale(1);
     }
+
     50% {
         opacity: 1;
         transform: scale(1.2);
@@ -752,8 +825,13 @@ body {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* 市場數據顯示 */
@@ -862,13 +940,15 @@ body {
 }
 
 /* 無數據和錯誤狀態 */
-.no-data, .error-state {
+.no-data,
+.error-state {
     text-align: center;
     padding: 4rem 2rem;
     color: var(--text-muted);
 }
 
-.no-data i, .error-state i {
+.no-data i,
+.error-state i {
     font-size: 4rem;
     margin-bottom: 1.5rem;
     opacity: 0.5;
@@ -879,7 +959,8 @@ body {
     opacity: 0.7;
 }
 
-.no-data h3, .error-state h3 {
+.no-data h3,
+.error-state h3 {
     font-size: 1.5rem;
     margin-bottom: 0.75rem;
     color: var(--text-secondary);
@@ -1216,6 +1297,7 @@ body {
         opacity: 0;
         transform: translateY(30px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1232,10 +1314,6 @@ body {
 
 .card:nth-child(3) {
     animation-delay: 0.4s;
-}--primary);
-    color: var(--primary-light);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.3);
 }
 
 .nav-link i {
@@ -1266,5 +1344,795 @@ body {
 }
 
 .nav-link.docs-link:hover {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.3));
-    border-color: var(
+    color: var(--info);
+    transform: translateY(-2px);
+}
+
+/* 快捷標籤導航 */
+.quick-nav {
+    margin: 2rem 0;
+    padding: 0 1rem;
+}
+
+.nav-tabs {
+    display: flex;
+    gap: 0.5rem;
+    background: var(--bg-glass);
+    border-radius: var(--radius-lg);
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+}
+
+.nav-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius);
+    color: var(--text-secondary);
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.9rem;
+}
+
+.nav-tab:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+.nav-tab.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: var(--shadow);
+}
+
+.nav-tab i {
+    font-size: 1rem;
+}
+
+/* 快捷標籤說明 */
+.nav-description {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--bg-glass);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+.nav-description p {
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.nav-description ul {
+    margin: 0;
+    padding-left: 1.5rem;
+    color: var(--text-secondary);
+}
+
+.nav-description li {
+    margin-bottom: 0.25rem;
+    line-height: 1.4;
+}
+
+.nav-description strong {
+    color: var(--text-primary);
+}
+
+/* 情緒分析強化樣式 */
+.sentiment-highlight {
+    background: var(--bg-glass);
+    border-radius: var(--radius);
+    padding: 1rem;
+    border: 1px solid var(--border);
+    margin-bottom: 1rem;
+}
+
+.sentiment-highlight .sentiment-score {
+    font-size: 1.1rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    display: inline-block;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.8;
+    }
+}
+
+/* 增強的交易訊號監測 */
+.enhanced-signal-display {
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    background: var(--bg-glass);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+.enhanced-signal-display h3 {
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.signal-grid {
+    display: grid;
+    gap: 4rem;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+}
+
+.signal-item {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    padding: 3rem;
+    border: 1px solid var(--border);
+    transition: var(--transition);
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow);
+}
+
+.signal-item:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary);
+}
+
+.signal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--border);
+}
+
+.signal-label {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1.3rem;
+}
+
+.signal-status {
+    font-weight: bold;
+    padding: 1rem 2rem;
+    border-radius: var(--radius);
+    font-size: 1.2rem;
+}
+
+.signal-success {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.signal-warning {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.signal-normal {
+    background: rgba(100, 116, 139, 0.2);
+    color: #64748b;
+    border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+.signal-description {
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    line-height: 1.7;
+    padding-top: 1.5rem;
+}
+
+/* Accordion 收合樣式 - 獨立框框風格 */
+.accordion-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.accordion-item {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 2px solid var(--border);
+    overflow: hidden;
+    transition: var(--transition);
+    box-shadow: var(--shadow);
+    margin-bottom: 1rem;
+}
+
+.accordion-item:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    cursor: pointer;
+    background: var(--bg-secondary);
+    transition: var(--transition);
+    user-select: none;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: none;
+}
+
+.accordion-header:hover {
+    background: var(--bg-glass);
+}
+
+.accordion-header span {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.accordion-header span i {
+    font-size: 1.2rem;
+    color: var(--primary);
+}
+
+.accordion-icon {
+    font-size: 1.3rem;
+    color: var(--text-secondary);
+    transition: var(--transition);
+    background: var(--bg-glass);
+    padding: 0.5rem;
+    border-radius: 50%;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.accordion-header:hover .accordion-icon {
+    color: var(--primary);
+    background: var(--primary);
+    color: white;
+}
+
+.accordion-content {
+    display: none;
+    padding: 1.5rem;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    line-height: 1.6;
+    border-top: none;
+    font-size: 0.9rem;
+}
+
+.accordion-content p {
+    margin-bottom: 0.75rem;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.accordion-content strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.accordion-content .data-table {
+    overflow-x: auto;
+    margin-top: 1rem;
+}
+
+.accordion-content .data-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.8rem;
+}
+
+.accordion-content .data-table th,
+.accordion-content .data-table td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.accordion-content .data-table th {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-weight: bold;
+    font-size: 0.8rem;
+}
+
+.accordion-content .data-table td {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.accordion-content .data-table tr:hover {
+    background: var(--bg-glass);
+}
+
+.accordion-content .data-table .positive {
+    color: var(--success);
+    font-weight: bold;
+}
+
+.accordion-content .data-table .negative {
+    color: var(--error);
+    font-weight: bold;
+}
+
+.accordion-content .status-success {
+    color: var(--success);
+    font-weight: bold;
+}
+
+.accordion-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 1.5rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    border: 2px dashed var(--border);
+    text-align: center;
+    min-height: 80px;
+    font-size: 0.9rem;
+}
+
+.accordion-placeholder span {
+    font-size: 0.9rem;
+}
+
+.accordion-content .log-content {
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.accordion-content .log-content p {
+    margin-bottom: 0.75rem;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.9rem;
+}
+
+.accordion-content .log-content strong {
+    color: var(--text-primary);
+}
+
+/* 數據表格樣式 */
+.data-table {
+    overflow-x: auto;
+    margin-top: 1rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+.data-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.85rem;
+}
+
+.data-table th,
+.data-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.data-table th {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+}
+
+.data-table td {
+    color: var(--text-secondary);
+}
+
+.data-table tr:hover {
+    background: var(--bg-glass);
+}
+
+.data-table .positive {
+    color: var(--success);
+    font-weight: bold;
+}
+
+.data-table .negative {
+    color: var(--error);
+    font-weight: bold;
+}
+
+/* 狀態指示器樣式 */
+.status-success {
+    color: var(--success);
+    font-weight: bold;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .nav-tabs {
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .nav-tab {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .signal-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .signal-item {
+        padding: 1rem;
+    }
+
+    .signal-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .accordion-header {
+        padding: 1rem;
+    }
+
+    .accordion-content {
+        padding: 1rem;
+    }
+
+    .data-table {
+        font-size: 0.8rem;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 0.5rem;
+    }
+}
+
+/* 動畫效果 */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.accordion-content[style*="display: block"] {
+    animation: slideDown 0.3s ease-out;
+}
+
+/* 強制X軸標籤水平顯示 */
+.chart-container canvas {
+    transform: none !important;
+}
+
+/* 確保圖表標籤水平顯示 */
+.chart-container {
+    overflow: visible !important;
+}
+
+/* 詳細日誌樣式 */
+.data-details-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.log-section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: var(--bg-glass);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+.log-section h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.log-content {
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.log-content p {
+    margin-bottom: 0.5rem;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.9rem;
+}
+
+.log-content strong {
+    color: var(--text-primary);
+}
+
+/* 線條控制樣式 */
+.line-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.line-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: var(--radius);
+    background: var(--bg-glass);
+    border: 1px solid var(--border);
+    transition: var(--transition);
+}
+
+.line-toggle:hover {
+    background: var(--bg-secondary);
+    border-color: var(--primary);
+}
+
+.line-toggle input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+}
+
+.toggle-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* 數據區塊樣式 */
+.data-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.data-section {
+    background: var(--bg-glass);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    transition: var(--transition);
+}
+
+.data-section:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow);
+}
+
+.data-section h3 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.data-section h3 i {
+    color: var(--primary);
+}
+
+.section-content {
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.section-content .log-content {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.9rem;
+}
+
+.section-content .log-content p {
+    margin-bottom: 0.75rem;
+}
+
+.section-content .log-content strong {
+    color: var(--text-primary);
+}
+
+/* Icon 大小調整 */
+.nav-brand i {
+    font-size: 1.8rem;
+    margin-right: 0.75rem;
+}
+
+.page-header h1 i {
+    font-size: 2.5rem;
+    margin-right: 1rem;
+}
+
+.card-icon i {
+    font-size: 1.6rem;
+    margin-right: 0.75rem;
+}
+
+.action-btn i {
+    font-size: 1.3rem;
+    margin-right: 0.5rem;
+}
+
+.data-label i {
+    font-size: 1.2rem;
+    margin-right: 0.5rem;
+}
+
+.indicators-grid .indicator-item i {
+    font-size: 1.4rem;
+    margin-right: 0.5rem;
+}
+
+.enhanced-signal-display h3 i {
+    font-size: 1.5rem;
+    margin-right: 0.75rem;
+}
+
+.chart-header h3 i {
+    font-size: 1.5rem;
+    margin-right: 0.75rem;
+}
+
+.accordion-header i {
+    font-size: 1.4rem;
+    margin-right: 0.75rem;
+}
+
+.accordion-placeholder i {
+    font-size: 1.5rem;
+}
+
+.nav-link i {
+    font-size: 1.3rem;
+    margin-right: 0.5rem;
+}
+
+.system-time i {
+    font-size: 1.2rem;
+    margin-right: 0.5rem;
+}
+
+.status-indicator i {
+    font-size: 1.2rem;
+    margin-right: 0.5rem;
+}
+
+.price-status i {
+    font-size: 1.2rem;
+    margin-right: 0.5rem;
+}
+
+.last-updated i {
+    font-size: 1.1rem;
+    margin-right: 0.5rem;
+}
+
+.error-state i {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.no-data i {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.loading-spinner i {
+    font-size: 1.5rem;
+    margin-right: 0.5rem;
+}
+
+.retry-btn i {
+    font-size: 1.2rem;
+    margin-right: 0.5rem;
+}
+
+/* Logo emoji 大小調整 */
+.logo-emoji {
+    font-size: 2rem;
+    animation: bounce 2s infinite;
+}
+
+.header-emoji {
+    font-size: 2.5rem;
+    animation: pulse-gold 2s infinite;
+}
+
+/* 動態生成的 Accordion 樣式 */
+.accordion-section {
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0.5rem;
+}
+
+.accordion-toggle {
+    width: 100%;
+    background: none;
+    border: none;
+    outline: none;
+    text-align: left;
+    font-size: 1rem;
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: background 0.2s;
+    color: var(--text-primary);
+    font-weight: 500;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    margin-bottom: 0.5rem;
+}
+
+.accordion-toggle:hover {
+    background: var(--bg-glass);
+}
+
+.accordion-toggle.expanded {
+    background: var(--bg-glass);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.accordion-icon {
+    display: inline-block;
+    width: 1.5em;
+    text-align: center;
+    margin-right: 0.75rem;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+}
+
+.accordion-toggle:hover .accordion-icon {
+    color: var(--primary);
+}
+
+.accordion-toggle.expanded .accordion-icon {
+    color: var(--primary);
+}
