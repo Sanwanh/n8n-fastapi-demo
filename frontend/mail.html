@@ -239,14 +239,20 @@
             // 獲取 score 和 summary
             let score = 0;
             let summaryContent = '';
-            
+
             // 從 raw_data 中獲取 score
             if (data.raw_data && data.raw_data.score !== undefined) {
                 score = data.raw_data.score;
             } else if (data.average_sentiment_score !== undefined) {
                 score = data.average_sentiment_score;
             }
-            
+
+            // 將 -1 到 1 的範圍轉換為 0 到 100 的範圍
+            // 0 = 極度恐慌, 100 = 極度貪婪
+            if (score >= -1 && score <= 1) {
+                score = Math.round(((score + 1) / 2) * 100);
+            }
+
             // 從 raw_data 中獲取 summary
             if (data.raw_data && data.raw_data.summary) {
                 summaryContent = data.raw_data.summary;
@@ -277,6 +283,18 @@
                         <div class="summary-item">
                             <span class="summary-label">分析日期:</span>
                             <span class="summary-value">${data.market_date || '今日'}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">信心水平:</span>
+                            <span class="summary-value">${data.confidence_level || '未知'}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">趨勢方向:</span>
+                            <span class="summary-value">${data.trend_direction || '未知'}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">風險評估:</span>
+                            <span class="summary-value">${data.risk_assessment || '未知'}</span>
                         </div>
                         <div class="summary-item">
                             <span class="summary-label">接收時間:</span>
@@ -394,19 +412,27 @@
         }
 
         function getSentimentClass(score) {
-            if (score > 60) return 'positive';
-            if (score < 40) return 'negative';
-            return 'neutral';
+            if (score >= 76) return 'positive';
+            if (score >= 51) return 'positive';
+            if (score === 50) return 'neutral';
+            if (score >= 26) return 'negative';
+            return 'negative';
         }
 
         function getSentimentText(score) {
-            if (score > 80) return '極度樂觀';
-            if (score > 60) return '樂觀';
-            if (score > 50) return '略為樂觀';
-            if (score > 40) return '中性';
-            if (score > 30) return '略為悲觀';
-            if (score > 20) return '悲觀';
-            return '極度悲觀';
+            if (score >= 76) return '極度貪婪';
+            if (score >= 51) return '貪婪';
+            if (score === 50) return '中立';
+            if (score >= 26) return '恐懼';
+            return '極度恐懼';
+        }
+
+        function getSentimentEmoji(score) {
+            if (score >= 76) return '😈';
+            if (score >= 51) return '😏';
+            if (score === 50) return '😐';
+            if (score >= 26) return '😰';
+            return '😱';
         }
 
         function formatContentPreview(content) {

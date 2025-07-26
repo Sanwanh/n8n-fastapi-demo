@@ -161,11 +161,38 @@ def calculate_statistics(data):
         return {}
 
     close_prices = data['Close']
+    
+    # 獲取當日數據（最新一天）
+    latest_date = close_prices.index[-1].date()
+    today_data = data[data.index.date == latest_date]
+    
+    # 計算當日統計
+    if not today_data.empty:
+        today_high = today_data['High'].max()
+        today_low = today_data['Low'].min()
+        today_open = today_data['Open'].iloc[0]
+        today_close = today_data['Close'].iloc[-1]
+        today_change = today_close - today_open
+        today_change_pct = (today_change / today_open) * 100 if today_open > 0 else 0
+    else:
+        # 如果沒有當日詳細數據，使用最後一天的數據
+        today_high = data['High'].iloc[-1]
+        today_low = data['Low'].iloc[-1]
+        today_open = data['Open'].iloc[-1]
+        today_close = close_prices.iloc[-1]
+        today_change = 0
+        today_change_pct = 0
 
     stats = {
         'current_price': close_prices.iloc[-1],
-        'max_price': close_prices.max(),
-        'min_price': close_prices.min(),
+        'today_high': today_high,
+        'today_low': today_low,
+        'today_open': today_open,
+        'today_close': today_close,
+        'today_change': today_change,
+        'today_change_pct': today_change_pct,
+        'yearly_max': close_prices.max(),
+        'yearly_min': close_prices.min(),
         'avg_price': close_prices.mean(),
         'price_change': close_prices.iloc[-1] - close_prices.iloc[0],
         'price_change_pct': ((close_prices.iloc[-1] - close_prices.iloc[0]) / close_prices.iloc[0]) * 100,
@@ -233,12 +260,18 @@ def create_visualization(data, stats, monthly_hl_avg=None):
     # 調整圖例位置，避免與統計框重疊
     ax1.legend(loc='upper right', framealpha=0.9)
 
-    # 添加統計資訊文字框 - 更新以包含月度平均資訊
-    info_text = f'''Statistics (1 Year):
-Max: ${stats["max_price"]:.2f}
-Min: ${stats["min_price"]:.2f}
+    # 添加統計資訊文字框 - 更新以包含當日統計資訊
+    info_text = f'''Today's Statistics:
+High: ${stats["today_high"]:.2f}
+Low: ${stats["today_low"]:.2f}
+Open: ${stats["today_open"]:.2f}
+Close: ${stats["today_close"]:.2f}
+Change: ${stats["today_change"]:+.2f} ({stats["today_change_pct"]:+.1f}%)
+
+Year Statistics:
+Max: ${stats["yearly_max"]:.2f}
+Min: ${stats["yearly_min"]:.2f}
 Avg: ${stats["avg_price"]:.2f}
-Change: ${stats["price_change"]:+.2f} ({stats["price_change_pct"]:+.1f}%)
 Volatility: ${stats["volatility"]:.2f}'''
 
     if monthly_hl_avg is not None and not monthly_hl_avg.empty:
@@ -294,8 +327,13 @@ def main():
     print("價格統計摘要")
     print("=" * 30)
     print(f"當前價格: ${stats['current_price']:.2f} USD/oz")
-    print(f"年度最高: ${stats['max_price']:.2f} USD/oz")
-    print(f"年度最低: ${stats['min_price']:.2f} USD/oz")
+    print(f"當日最高: ${stats['today_high']:.2f} USD/oz")
+    print(f"當日最低: ${stats['today_low']:.2f} USD/oz")
+    print(f"當日開盤: ${stats['today_open']:.2f} USD/oz")
+    print(f"當日收盤: ${stats['today_close']:.2f} USD/oz")
+    print(f"當日變化: ${stats['today_change']:+.2f} USD ({stats['today_change_pct']:+.1f}%)")
+    print(f"年度最高: ${stats['yearly_max']:.2f} USD/oz")
+    print(f"年度最低: ${stats['yearly_min']:.2f} USD/oz")
     print(f"年度變化: ${stats['price_change']:+.2f} USD ({stats['price_change_pct']:+.1f}%)")
     print(f"最後更新: {stats['latest_date'].strftime('%Y-%m-%d %H:%M:%S')}")
     

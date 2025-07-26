@@ -216,16 +216,7 @@
                                     </div>
                                 </div>
 
-                                <div class="signal-item" id="volatility-signal">
-                                    <div class="signal-header" style="margin-bottom: 0.4em;">
-                                        <span class="signal-label" style="margin-right: 0.6em;">波動率變化</span>
-                                        <span class="signal-status" id="volatility-status">--</span>
-                                    </div>
-                                    <div class="signal-description" id="volatility-description"
-                                        style="color: var(--text-muted);">
-                                        當日波動率是否超過均值 ± 2σ
-                                    </div>
-                                </div>
+
                             </div>
                         </div>
 
@@ -248,7 +239,7 @@
                                         </label>
                                         <label class="line-toggle">
                                             <input type="checkbox" id="show-quarterly" checked>
-                                            <span class="toggle-label">季平均</span>
+                                            <span class="toggle-label">轉折點</span>
                                         </label>
                                     </div>
                                 </div>
@@ -593,9 +584,8 @@
         function displayMarketData(data) {
             console.log('🎨 顯示市場數據:', data);
 
-            // 獲取 score 和 summary
+            // 獲取 score
             let score = 0;
-            let summaryContent = '';
 
             // 從 raw_data 中獲取 score
             if (data.raw_data && data.raw_data.score !== undefined) {
@@ -604,14 +594,14 @@
                 score = data.average_sentiment_score;
             }
 
-            // 從 raw_data 中獲取 summary
-            if (data.raw_data && data.raw_data.summary) {
-                summaryContent = data.raw_data.summary;
-            } else if (data.summary) {
-                summaryContent = data.summary;
-            } else if (data.message_content) {
-                summaryContent = data.message_content;
+            // 將 -1 到 1 的範圍轉換為 0 到 100 的範圍
+            // 0 = 極度恐慌, 100 = 極度貪婪
+            if (score >= -1 && score <= 1) {
+                score = Math.round(((score + 1) / 2) * 100);
             }
+
+            // 獲取摘要內容
+            const summaryContent = getSummaryContent(data);
 
             const sentimentClass = getSentimentClass(score);
             const sentimentText = getSentimentText(score);
@@ -650,7 +640,7 @@
                         <div class="data-value">${data.market_date || '未知'}</div>
                     </div>
 
-                                        <div class="data-row full-width">
+                    <div class="data-row full-width">
                         <div class="data-label">
                             <i class="fas fa-newspaper"></i>
                             市場情緒摘要
@@ -699,19 +689,19 @@
                     <div class="price-statistics">
                         <div class="stat-grid">
                             <div class="stat-item">
-                                <span class="stat-label">24H 高</span>
-                                <span class="stat-value">$${data.high_24h?.toFixed(2) || 'N/A'}</span>
+                                <span class="stat-label">當日高</span>
+                                <span class="stat-value">$${data.today_high?.toFixed(2) || 'N/A'}</span>
                             </div>
                             <div class="stat-item">
-                                <span class="stat-label">24H 低</span>
-                                <span class="stat-value">$${data.low_24h?.toFixed(2) || 'N/A'}</span>
+                                <span class="stat-label">當日低</span>
+                                <span class="stat-value">$${data.today_low?.toFixed(2) || 'N/A'}</span>
                             </div>
                             <div class="stat-item">
-                                <span class="stat-label">平均價格</span>
+                                <span class="stat-label">年平均價格</span>
                                 <span class="stat-value">$${data.avg_price?.toFixed(2) || 'N/A'}</span>
                             </div>
                             <div class="stat-item">
-                                <span class="stat-label">波動率</span>
+                                <span class="stat-label">年波動率</span>
                                 <span class="stat-value">${data.volatility?.toFixed(2) || 'N/A'}</span>
                             </div>
 
@@ -944,50 +934,85 @@
                 console.log('data.ma_125_line 長度:', data.ma_125_line?.length);
             }
 
-            // 添加季平均均線
-            if (showQuarterly && data.quarterly_average_line && data.quarterly_average_line.length > 0) {
-                console.log('🔍 處理季平均均線數據...');
-                console.log('季平均均線原始數據:', data.quarterly_average_line);
+            // 添加轉折點線
+            if (showQuarterly && data.pivot_points && data.pivot_points.length > 0) {
+                console.log('🔍 處理轉折點數據...');
+                console.log('轉折點原始數據:', data.pivot_points);
 
-                // 創建季平均均線數據映射
+                // 創建轉折點數據映射
                 const quarterlyMap = {};
-                data.quarterly_average_line.forEach(d => {
+                data.pivot_points.forEach(d => {
                     quarterlyMap[d.time] = parseFloat(d.price) || 0;
                 });
 
-                console.log('季平均均線映射樣本:', Object.keys(quarterlyMap).slice(0, 5));
-                console.log('季平均均線映射值樣本:', Object.values(quarterlyMap).slice(0, 5));
+                console.log('轉折點映射:', quarterlyMap);
+                console.log('主數據標籤樣本:', validLabels.slice(0, 5));
+                console.log('轉折點日期樣本:', Object.keys(quarterlyMap));
 
-                // 對齊到主數據的時間軸
+                // 對齊到主數據的時間軸，但保留轉折點的特殊處理
                 const alignedQuarterlyPrices = validLabels.map(label => {
-                    return quarterlyMap[label] || null;
+                    // 嘗試直接匹配
+                    let value = quarterlyMap[label];
+
+                    // 如果沒有直接匹配，嘗試找到最接近的日期
+                    if (value === undefined) {
+                        const labelDate = new Date(label);
+                        if (!isNaN(labelDate.getTime())) {
+                            // 尋找最接近的轉折點日期
+                            let closestDate = null;
+                            let minDiff = Infinity;
+
+                            Object.keys(quarterlyMap).forEach(quarterlyDate => {
+                                const quarterlyDateObj = new Date(quarterlyDate);
+                                if (!isNaN(quarterlyDateObj.getTime())) {
+                                    const diff = Math.abs(labelDate.getTime() - quarterlyDateObj.getTime());
+                                    if (diff < minDiff) {
+                                        minDiff = diff;
+                                        closestDate = quarterlyDate;
+                                    }
+                                }
+                            });
+
+                            // 如果最接近的日期在7天內，使用該值
+                            if (closestDate && minDiff <= 7 * 24 * 60 * 60 * 1000) {
+                                value = quarterlyMap[closestDate];
+                                console.log(`使用最接近的日期: ${label} -> ${closestDate} = ${value}`);
+                            }
+                        }
+                    } else {
+                        console.log(`找到直接匹配: ${label} = ${value}`);
+                    }
+
+                    return value || null;
                 });
 
-                console.log('季平均均線對齊數據點數:', alignedQuarterlyPrices.filter(p => p !== null).length);
-                console.log('季平均均線對齊數據樣本:', alignedQuarterlyPrices.slice(0, 10));
+                console.log('轉折點對齊數據點數:', alignedQuarterlyPrices.filter(p => p !== null).length);
+                console.log('轉折點對齊數據樣本:', alignedQuarterlyPrices.slice(0, 10));
 
                 if (alignedQuarterlyPrices.filter(p => p !== null).length > 0) {
                     datasets.push({
-                        label: '季平均均線',
+                        label: '轉折點',
                         data: alignedQuarterlyPrices,
                         borderColor: '#FF8C00',
                         backgroundColor: 'transparent',
                         borderWidth: 2,
                         fill: false,
-                        tension: 0.4,
-                        pointRadius: 0,
+                        tension: 0.2,
+                        pointRadius: 2,
                         pointHoverRadius: 4,
-                        borderDash: [6, 3],
-                        spanGaps: true
+                        pointBackgroundColor: '#FF8C00',
+                        pointBorderColor: '#FF8C00',
+                        borderDash: [0], // 實線
+                        spanGaps: false
                     });
                 } else {
-                    console.log('⚠️ 季平均均線沒有有效數據點');
+                    console.log('⚠️ 轉折點沒有有效數據點');
                 }
             } else {
-                console.log('⚠️ 季平均均線數據不存在或為空');
+                console.log('⚠️ 轉折點數據不存在或為空');
                 console.log('showQuarterly:', showQuarterly);
-                console.log('data.quarterly_average_line 存在:', !!data.quarterly_average_line);
-                console.log('data.quarterly_average_line 長度:', data.quarterly_average_line?.length);
+                console.log('data.pivot_points 存在:', !!data.pivot_points);
+                console.log('data.pivot_points 長度:', data.pivot_points?.length);
             }
 
             // 檢查交叉信號
@@ -1217,8 +1242,7 @@
             // RSI 區間信號
             updateRSISignal(goldData);
 
-            // 波動率變化信號
-            updateVolatilitySignal(goldData);
+
         }
 
         function updateMACrossSignal(goldData) {
@@ -1283,34 +1307,7 @@
             }
         }
 
-        function updateVolatilitySignal(goldData) {
-            const statusElement = document.getElementById('volatility-status');
-            const descriptionElement = document.getElementById('volatility-description');
 
-            if (goldData.volatility && goldData.technical_indicators) {
-                const currentVolatility = goldData.volatility;
-                const avgVolatility = goldData.technical_indicators.avg_volatility || 2.0; // 預設值
-                const volatilityThreshold = avgVolatility * 2; // ±2σ
-
-                let statusText = '';
-                let statusClass = '';
-                let description = '';
-
-                if (currentVolatility > volatilityThreshold) {
-                    statusText = '⚠️ 異常';
-                    statusClass = 'signal-warning';
-                    description = `波動率: ${currentVolatility.toFixed(2)}%，超過閾值 ${volatilityThreshold.toFixed(2)}%，市場波動劇烈`;
-                } else {
-                    statusText = '✅ 正常';
-                    statusClass = 'signal-success';
-                    description = `波動率: ${currentVolatility.toFixed(2)}%，處於正常範圍`;
-                }
-
-                statusElement.textContent = statusText;
-                statusElement.className = `signal-status ${statusClass}`;
-                descriptionElement.textContent = description;
-            }
-        }
 
         // ===== 更新詳細日誌 =====
         // 每個 section 都有自己的 accordion 展開/收合
@@ -1519,10 +1516,10 @@
                     <p><strong>當前價格:</strong> ${goldPriceData.current_price?.toFixed(2) || 'N/A'}</p>
                     <p><strong>變化金額:</strong> ${goldPriceData.change >= 0 ? '+' : ''}${goldPriceData.change?.toFixed(2) || 'N/A'}</p>
                     <p><strong>變化百分比:</strong> ${goldPriceData.change_percent >= 0 ? '+' : ''}${goldPriceData.change_percent?.toFixed(2) || 'N/A'}%</p>
-                    <p><strong>24小時最高:</strong> ${goldPriceData.high_24h?.toFixed(2) || 'N/A'}</p>
-                    <p><strong>24小時最低:</strong> ${goldPriceData.low_24h?.toFixed(2) || 'N/A'}</p>
-                    <p><strong>平均價格:</strong> ${goldPriceData.avg_price?.toFixed(2) || 'N/A'}</p>
-                    <p><strong>波動率:</strong> ${goldPriceData.volatility?.toFixed(2) || 'N/A'}</p>
+                    <p><strong>當日高:</strong> ${goldPriceData.today_high?.toFixed(2) || 'N/A'}</p>
+                    <p><strong>當日低:</strong> ${goldPriceData.today_low?.toFixed(2) || 'N/A'}</p>
+                    <p><strong>年平均價格:</strong> ${goldPriceData.avg_price?.toFixed(2) || 'N/A'}</p>
+                    <p><strong>年波動率:</strong> ${goldPriceData.volatility?.toFixed(2) || 'N/A'}</p>
                     <p><strong>市場狀態:</strong> ${getMarketStatusText(goldPriceData.market_status)}</p>
                     <p><strong>貨幣單位:</strong> ${goldPriceData.currency || 'USD'}</p>
                     <p><strong>數據點數量:</strong> ${goldPriceData.data_points || 0}</p>
@@ -1553,16 +1550,39 @@
         function updateMarketSentimentContent(contentElement) {
             if (!marketData) return;
 
+            // 轉換情感分數到0-100範圍
+            let sentimentScore = marketData.average_sentiment_score || 0;
+            if (sentimentScore >= -1 && sentimentScore <= 1) {
+                sentimentScore = Math.round(((sentimentScore + 1) / 2) * 100);
+            }
+
+            // 獲取情感相關信息
+            const sentimentClass = getSentimentClass(sentimentScore);
+            const sentimentText = getSentimentText(sentimentScore);
+            const sentimentEmoji = getSentimentEmoji(sentimentScore);
+
+
+
             contentElement.innerHTML = `
                 <div class="log-content">
-                    <p><strong>情感分數:</strong> ${marketData.average_sentiment_score || 0}分</p>
-                    <p><strong>情感描述:</strong> ${getSentimentText(marketData.average_sentiment_score)}</p>
-                    <p><strong>市場日期:</strong> ${marketData.market_date || '未知'}</p>
-                    <p><strong>接收時間:</strong> ${marketData.received_time || '未知'}</p>
-                    <p><strong>分析內容:</strong></p>
-                    <div class="analysis-content">
-                        <p>${marketData.raw_data?.message?.content || marketData.message_content || '無分析內容'}</p>
-                    </div>
+                    <div class="sentiment-details">
+                        <div class="sentiment-header">
+                            <span class="sentiment-emoji">${sentimentEmoji}</span>
+                            <span class="sentiment-score">${sentimentScore}/100分</span>
+                            <span class="sentiment-text sentiment-${sentimentClass}">${sentimentText}</span>
+                        </div>
+                        
+                        <div class="market-details">
+                            <p><strong>市場日期:</strong> ${marketData.market_date || '未知'}</p>
+                            <p><strong>接收時間:</strong> ${marketData.received_time || '未知'}</p>
+                        </div>
+                        
+                        <div class="analysis-section">
+                            <p><strong>市場情緒摘要:</strong></p>
+                            <div class="analysis-content">
+                                <p>${getSummaryContent(marketData)}</p>
+                            </div>
+                        </div>
                 </div>
             `;
         }
@@ -1627,30 +1647,40 @@
         }
 
         // ===== 輔助函數 =====
+        function getSummaryContent(data) {
+            // 從 raw_data 中獲取 summary
+            if (data.raw_data && data.raw_data.summary) {
+                return data.raw_data.summary;
+            } else if (data.summary) {
+                return data.summary;
+            } else if (data.message_content) {
+                return data.message_content;
+            }
+            return '無分析內容';
+        }
+
         function getSentimentClass(score) {
-            if (score > 60) return 'positive';
-            if (score < 40) return 'negative';
-            return 'neutral';
+            if (score >= 76) return 'positive';
+            if (score >= 51) return 'positive';
+            if (score === 50) return 'neutral';
+            if (score >= 26) return 'negative';
+            return 'negative';
         }
 
         function getSentimentText(score) {
-            if (score > 80) return '極度樂觀';
-            if (score > 60) return '樂觀';
-            if (score > 50) return '略為樂觀';
-            if (score > 40) return '中性';
-            if (score > 30) return '略為悲觀';
-            if (score > 20) return '悲觀';
-            return '極度悲觀';
+            if (score >= 76) return '極度貪婪';
+            if (score >= 51) return '貪婪';
+            if (score === 50) return '中立';
+            if (score >= 26) return '恐懼';
+            return '極度恐懼';
         }
 
         function getSentimentEmoji(score) {
-            if (score > 80) return '😄';
-            if (score > 60) return '🙂';
-            if (score > 50) return '😊';
-            if (score > 40) return '😐';
-            if (score > 30) return '😕';
-            if (score > 20) return '😟';
-            return '😢';
+            if (score >= 76) return '😈';
+            if (score >= 51) return '😏';
+            if (score === 50) return '😐';
+            if (score >= 26) return '😰';
+            return '😱';
         }
 
         function getMarketStatusText(status) {

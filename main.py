@@ -428,12 +428,12 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
         ma_lines = {}
         if len(hist_data) >= 5:
             ma_5_data = hist_data['Close'].rolling(window=5).mean().dropna()
-            ma_lines["ma_5"] = [{"time": idx.strftime('%Y-%m-%d'), "price": float(val)} 
+            ma_lines["ma_5"] = [{"time": str(idx)[:10], "price": float(val)} 
                                for idx, val in ma_5_data.items()]
         
         if len(hist_data) >= 20:
             ma_20_data = hist_data['Close'].rolling(window=20).mean().dropna()
-            ma_lines["ma_20"] = [{"time": idx.strftime('%Y-%m-%d'), "price": float(val)} 
+            ma_lines["ma_20"] = [{"time": str(idx)[:10], "price": float(val)} 
                                 for idx, val in ma_20_data.items()]
 
         # 計算MA125線（替代月平均線）
@@ -452,6 +452,29 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
         # 獲取市場資訊
         market_name = get_market_name(info)
 
+        # 計算當日高和當日低
+        today_high = None
+        today_low = None
+        try:
+            # 獲取當天的數據
+            today = datetime.now().date()
+            today_data = hist_data[hist_data.index.date == today]
+            if not today_data.empty:
+                today_high = float(today_data['High'].max())
+                today_low = float(today_data['Low'].min())
+                logger.info(f"📊 當日數據: 高=${today_high:.2f}, 低=${today_low:.2f}")
+            else:
+                # 如果沒有當天數據，使用最近一天的數據
+                if len(hist_data) > 0:
+                    latest_data = hist_data.iloc[-1]
+                    today_high = float(latest_data['High'])
+                    today_low = float(latest_data['Low'])
+                    logger.info(f"📊 使用最近數據: 高=${today_high:.2f}, 低=${today_low:.2f}")
+        except Exception as e:
+            logger.warning(f"⚠️ 計算當日高低價失敗: {e}")
+            today_high = stats['current_price']
+            today_low = stats['current_price']
+
         # 準備回應數據
         response_data = {
             "status": "success",
@@ -463,6 +486,8 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
                 "change_percent": round(stats['price_change_pct'], 2),
                 "high_24h": round(stats['max_price'], 2),
                 "low_24h": round(stats['min_price'], 2),
+                "today_high": round(today_high, 2) if today_high else None,
+                "today_low": round(today_low, 2) if today_low else None,
                 "avg_price": round(stats['avg_price'], 2),
                 "volatility": round(stats['volatility'], 2),
                 "volume_24h": 0,  # 移除交易量顯示
@@ -473,7 +498,7 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
                 "chart_data": chart_data,
                 "ma_lines": ma_lines,
                 "ma_125_line": ma_125_line,
-                "quarterly_average_line": quarterly_average_line,
+                "pivot_points": quarterly_average_line,  # 轉折點數據
                 "cross_signal": cross_signal,
                 "market_status": market_status,
                 "technical_indicators": technical_indicators,
@@ -785,17 +810,25 @@ def calculate_monthly_average_line(hist_data):
         # 轉換為圖表數據格式 - 每個月只創建一個數據點
         monthly_line_data = []
         for period, avg_price in monthly_averages.items():
-            # 使用該月的最後一個交易日作為代表日期
-            month_end = period.to_timestamp() + pd.offsets.MonthEnd(0)
-            
-            # 找到該月的最後一個交易日
-            month_trading_days = [date for date in hist_data.index if date <= month_end]
-            if month_trading_days:
-                last_trading_day = max(month_trading_days)
-                monthly_line_data.append({
-                    'time': last_trading_day.strftime('%Y-%m-%d'),
-                    'price': float(avg_price)
-                })
+            try:
+                # 使用該月的最後一個交易日作為代表日期
+                try:
+                    month_end = period.to_timestamp() + pd.offsets.MonthEnd(0)
+                except Exception as e:
+                    logger.warning(f"⚠️ 轉換月份 {period} 時出錯: {e}")
+                    continue
+                
+                # 找到該月的最後一個交易日
+                month_trading_days = [date for date in hist_data.index if date <= month_end]
+                if month_trading_days:
+                    last_trading_day = max(month_trading_days)
+                    monthly_line_data.append({
+                        'time': str(last_trading_day)[:10],  # 取前10個字符作為日期
+                        'price': float(avg_price)
+                    })
+            except Exception as e:
+                logger.warning(f"⚠️ 處理月份 {period} 時出錯: {e}")
+                continue
         
         logger.info(f"📊 月平均線計算完成，共 {len(monthly_line_data)} 個數據點")
         logger.info(f"    月平均價格範圍: ${monthly_averages.min():.2f} - ${monthly_averages.max():.2f}")
@@ -808,38 +841,53 @@ def calculate_monthly_average_line(hist_data):
 
 
 def calculate_quarterly_average_line(hist_data):
-    """計算季平均均線 - 使用MA90概念，生成連續線條"""
+    """
+    計算轉折點（Pivot Point）- 每月初計算一次，該點為前三個月最高價與最低價的平均值，每月只產生一個點，並可連成折線圖。
+    """
     try:
-        # 確保數據有日期索引
+        # 確保索引為 DatetimeIndex
         if not isinstance(hist_data.index, pd.DatetimeIndex):
             hist_data.index = pd.to_datetime(hist_data.index)
-        
-        # 統一時區處理 - 轉換為無時區的日期
         hist_data.index = hist_data.index.tz_localize(None)
-        
-        # 計算90日移動平均線（季線概念）
-        ma90 = hist_data['Close'].rolling(window=90).mean()
-        
-        # 轉換為圖表數據格式 - 保留所有數據點以形成連續線條
-        quarterly_line_data = []
-        for date, price in ma90.items():
-            if not pd.isna(price):  # 只添加非NaN的數據點
-                quarterly_line_data.append({
-                    'time': date.strftime('%Y-%m-%d'),
-                    'price': float(price)
-                })
-        
-        logger.info(f"📊 季平均均線(MA90)計算完成，共 {len(quarterly_line_data)} 個數據點")
-        if len(quarterly_line_data) > 0:
-            prices = [point['price'] for point in quarterly_line_data]
-            min_price = min(prices)
-            max_price = max(prices)
-            logger.info(f"    季平均價格範圍: ${min_price:.2f} - ${max_price:.2f}")
-        
-        return quarterly_line_data
-        
+
+        # 只取近12個月資料
+        last_date = hist_data.index.max()
+        twelve_months_ago = last_date - pd.DateOffset(months=12)
+        recent_data = hist_data[hist_data.index >= twelve_months_ago]
+
+        if len(recent_data) < 90:
+            logger.warning("⚠️ 數據不足90天，無法計算轉折點")
+            return []
+
+        points = []
+        # 取得所有月份（升冪排序）
+        months = sorted(set(pd.to_datetime(recent_data.index).to_period('M')))
+        for i in range(3, len(months)):
+            # 取前三個月的區間
+            prev3 = months[i-3:i]
+            # 取得這三個月的所有資料
+            mask = recent_data.index.to_period('M').isin(prev3)
+            three_month_data = recent_data[mask]
+            if len(three_month_data) == 0:
+                continue
+            high = three_month_data['High'].max()
+            low = three_month_data['Low'].min()
+            pivot = (high + low) / 2
+            # 本月第一天
+            this_month = months[i].to_timestamp()
+            points.append({
+                'time': str(this_month)[:10],
+                'price': float(pivot),
+                'high': float(high),
+                'low': float(low),
+                'range': f"{prev3[0]}~{prev3[-1]}"
+            })
+            logger.info(f"📊 轉折點: {str(this_month)[:10]} ({prev3[0]}~{prev3[-1]}) = {pivot:.2f}")
+
+        logger.info(f"📊 轉折點計算完成，共 {len(points)} 個數據點")
+        return points
     except Exception as e:
-        logger.warning(f"⚠️ 季平均均線計算錯誤: {e}")
+        logger.warning(f"⚠️ 轉折點計算錯誤: {e}")
         return []
 
 
@@ -861,7 +909,7 @@ def calculate_ma125_line(hist_data):
         ma_125_line_data = []
         for idx, val in ma_125_data.items():
             ma_125_line_data.append({
-                'time': idx.strftime('%Y-%m-%d'),
+                'time': str(idx)[:10],  # 取前10個字符作為日期
                 'price': float(val)
             })
         
@@ -957,12 +1005,12 @@ def calculate_yearly_average_line(hist_data):
         yearly_line_data = []
         for date in hist_data.index:
             yearly_line_data.append({
-                'time': date.strftime('%Y-%m-%d'),
+                'time': str(date)[:10],  # 取前10個字符作為日期
                 'price': float(yearly_avg_price)
             })
         
         logger.info(f"📊 年平均價格計算完成: ${yearly_avg_price:.2f}")
-        logger.info(f"    數據範圍: {yearly_data.index.min().strftime('%Y-%m-%d')} 至 {yearly_data.index.max().strftime('%Y-%m-%d')}")
+        logger.info(f"    數據範圍: {str(yearly_data.index.min())[:10]} 至 {str(yearly_data.index.max())[:10]}")
         logger.info(f"    數據點數: {len(yearly_data)}")
         
         return yearly_line_data
@@ -1049,6 +1097,8 @@ def create_mock_gold_data(period: str):
             "change_percent": round(change_percent, 2),
             "high_24h": round(current_price * 1.015, 2),
             "low_24h": round(current_price * 0.985, 2),
+            "today_high": round(current_price * 1.008, 2),
+            "today_low": round(current_price * 0.992, 2),
             "avg_price": round(base_price, 2),
             "volatility": round(np.random.uniform(10, 50), 2),
             "volume_24h": np.random.randint(50000, 200000),
