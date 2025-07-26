@@ -939,72 +939,49 @@
                 console.log('🔍 處理轉折點數據...');
                 console.log('轉折點原始數據:', data.pivot_points);
 
-                // 創建轉折點數據映射
-                const quarterlyMap = {};
-                data.pivot_points.forEach(d => {
-                    quarterlyMap[d.time] = parseFloat(d.price) || 0;
-                });
+                // 修正：創建獨立的轉折點數據集，確保能連成一條折線圖
+                const pivotLabels = data.pivot_points.map(d => d.time);
+                const pivotPrices = data.pivot_points.map(d => parseFloat(d.price) || 0);
 
-                console.log('轉折點映射:', quarterlyMap);
-                console.log('主數據標籤樣本:', validLabels.slice(0, 5));
-                console.log('轉折點日期樣本:', Object.keys(quarterlyMap));
+                console.log('轉折點標籤:', pivotLabels);
+                console.log('轉折點價格:', pivotPrices);
 
-                // 對齊到主數據的時間軸，但保留轉折點的特殊處理
-                const alignedQuarterlyPrices = validLabels.map(label => {
-                    // 嘗試直接匹配
-                    let value = quarterlyMap[label];
-
-                    // 如果沒有直接匹配，嘗試找到最接近的日期
-                    if (value === undefined) {
-                        const labelDate = new Date(label);
-                        if (!isNaN(labelDate.getTime())) {
-                            // 尋找最接近的轉折點日期
-                            let closestDate = null;
-                            let minDiff = Infinity;
-
-                            Object.keys(quarterlyMap).forEach(quarterlyDate => {
-                                const quarterlyDateObj = new Date(quarterlyDate);
-                                if (!isNaN(quarterlyDateObj.getTime())) {
-                                    const diff = Math.abs(labelDate.getTime() - quarterlyDateObj.getTime());
-                                    if (diff < minDiff) {
-                                        minDiff = diff;
-                                        closestDate = quarterlyDate;
-                                    }
-                                }
-                            });
-
-                            // 如果最接近的日期在7天內，使用該值
-                            if (closestDate && minDiff <= 7 * 24 * 60 * 60 * 1000) {
-                                value = quarterlyMap[closestDate];
-                                console.log(`使用最接近的日期: ${label} -> ${closestDate} = ${value}`);
-                            }
-                        }
-                    } else {
-                        console.log(`找到直接匹配: ${label} = ${value}`);
-                    }
-
-                    return value || null;
-                });
-
-                console.log('轉折點對齊數據點數:', alignedQuarterlyPrices.filter(p => p !== null).length);
-                console.log('轉折點對齊數據樣本:', alignedQuarterlyPrices.slice(0, 10));
-
-                if (alignedQuarterlyPrices.filter(p => p !== null).length > 0) {
-                    datasets.push({
-                        label: '轉折點',
-                        data: alignedQuarterlyPrices,
-                        borderColor: '#FF8C00',
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        fill: false,
-                        tension: 0.2,
-                        pointRadius: 2,
-                        pointHoverRadius: 4,
-                        pointBackgroundColor: '#FF8C00',
-                        pointBorderColor: '#FF8C00',
-                        borderDash: [0], // 實線
-                        spanGaps: false
+                if (pivotPrices.length > 0) {
+                    // 修正：創建對齊到主數據時間軸的轉折點數據集
+                    const pivotMap = {};
+                    data.pivot_points.forEach(d => {
+                        pivotMap[d.time] = parseFloat(d.price) || 0;
                     });
+
+                    // 對齊到主數據的時間軸
+                    const alignedPivotPrices = validLabels.map(label => {
+                        return pivotMap[label] || null;
+                    });
+
+                    console.log('轉折點對齊數據點數:', alignedPivotPrices.filter(p => p !== null).length);
+
+                    if (alignedPivotPrices.filter(p => p !== null).length > 0) {
+                        datasets.push({
+                            label: '轉折點',
+                            data: alignedPivotPrices,
+                            borderColor: '#FF8C00',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1, // 減少曲線張力，讓線更直
+                            pointRadius: 2, // 縮小點的大小
+                            pointHoverRadius: 4, // 縮小懸停時點的大小
+                            pointBackgroundColor: '#FF8C00',
+                            pointBorderColor: '#FF8C00',
+                            borderDash: [0], // 實線
+                            spanGaps: true, // 允許跨越空值，讓線條連續
+                            pointHitRadius: 8, // 增加點擊區域，方便交互
+                            pointBorderWidth: 1, // 點邊框寬度
+                            pointStyle: 'circle' // 確保點是圓形
+                        });
+                    } else {
+                        console.log('⚠️ 轉折點對齊後沒有有效數據點');
+                    }
                 } else {
                     console.log('⚠️ 轉折點沒有有效數據點');
                 }
@@ -1550,8 +1527,18 @@
         function updateMarketSentimentContent(contentElement) {
             if (!marketData) return;
 
-            // 轉換情感分數到0-100範圍
-            let sentimentScore = marketData.average_sentiment_score || 0;
+            // 獲取 score - 使用與最上面市場情感分析相同的邏輯
+            let sentimentScore = 0;
+
+            // 從 raw_data 中獲取 score
+            if (marketData.raw_data && marketData.raw_data.score !== undefined) {
+                sentimentScore = marketData.raw_data.score;
+            } else if (marketData.average_sentiment_score !== undefined) {
+                sentimentScore = marketData.average_sentiment_score;
+            }
+
+            // 將 -1 到 1 的範圍轉換為 0 到 100 的範圍
+            // 0 = 極度恐慌, 100 = 極度貪婪
             if (sentimentScore >= -1 && sentimentScore <= 1) {
                 sentimentScore = Math.round(((sentimentScore + 1) / 2) * 100);
             }

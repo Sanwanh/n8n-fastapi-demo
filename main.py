@@ -428,13 +428,47 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
         ma_lines = {}
         if len(hist_data) >= 5:
             ma_5_data = hist_data['Close'].rolling(window=5).mean().dropna()
-            ma_lines["ma_5"] = [{"time": str(idx)[:10], "price": float(val)} 
-                               for idx, val in ma_5_data.items()]
+            ma_5_line_data = []
+            for idx, val in ma_5_data.items():
+                # 確保時間格式與圖表數據一致，並正確處理時區
+                if hasattr(idx, 'tz_localize'):
+                    if idx.tz is None:
+                        # 假設是UTC時間，轉換為台北時間
+                        idx_local = idx + timedelta(hours=8)
+                    else:
+                        # 轉換為台北時間
+                        idx_local = idx.tz_convert('Asia/Taipei')
+                else:
+                    # 假設是UTC時間，轉換為台北時間
+                    idx_local = idx + timedelta(hours=8)
+                
+                ma_5_line_data.append({
+                    'time': idx_local.strftime('%Y-%m-%d'),
+                    'price': float(val)
+                })
+            ma_lines["ma_5"] = ma_5_line_data
         
         if len(hist_data) >= 20:
             ma_20_data = hist_data['Close'].rolling(window=20).mean().dropna()
-            ma_lines["ma_20"] = [{"time": str(idx)[:10], "price": float(val)} 
-                                for idx, val in ma_20_data.items()]
+            ma_20_line_data = []
+            for idx, val in ma_20_data.items():
+                # 確保時間格式與圖表數據一致，並正確處理時區
+                if hasattr(idx, 'tz_localize'):
+                    if idx.tz is None:
+                        # 假設是UTC時間，轉換為台北時間
+                        idx_local = idx + timedelta(hours=8)
+                    else:
+                        # 轉換為台北時間
+                        idx_local = idx.tz_convert('Asia/Taipei')
+                else:
+                    # 假設是UTC時間，轉換為台北時間
+                    idx_local = idx + timedelta(hours=8)
+                
+                ma_20_line_data.append({
+                    'time': idx_local.strftime('%Y-%m-%d'),
+                    'price': float(val)
+                })
+            ma_lines["ma_20"] = ma_20_line_data
 
         # 計算MA125線（替代月平均線）
         ma_125_line = calculate_ma125_line(hist_data)
@@ -848,44 +882,110 @@ def calculate_quarterly_average_line(hist_data):
         # 確保索引為 DatetimeIndex
         if not isinstance(hist_data.index, pd.DatetimeIndex):
             hist_data.index = pd.to_datetime(hist_data.index)
+        
+        # 統一處理時區問題，轉換為台北時間 (+8)
+        if hist_data.index.tz is None:
+            # 假設是UTC時間，轉換為台北時間
+            hist_data.index = hist_data.index + timedelta(hours=8)
+        else:
+            # 轉換為台北時間
+            hist_data.index = hist_data.index.tz_convert('Asia/Taipei')
+        
+        # 移除時區信息，統一為本地時間
         hist_data.index = hist_data.index.tz_localize(None)
 
-        # 只取近12個月資料
-        last_date = hist_data.index.max()
-        twelve_months_ago = last_date - pd.DateOffset(months=12)
-        recent_data = hist_data[hist_data.index >= twelve_months_ago]
-
-        if len(recent_data) < 90:
+        # 確保數據按時間排序
+        hist_data = hist_data.sort_index()
+        
+        # 獲取數據的時間範圍
+        start_date = hist_data.index.min()
+        end_date = hist_data.index.max()
+        
+        logger.info(f"📊 數據時間範圍: {start_date.strftime('%Y-%m-%d')} 到 {end_date.strftime('%Y-%m-%d')}")
+        
+        if len(hist_data) < 90:
             logger.warning("⚠️ 數據不足90天，無法計算轉折點")
             return []
 
         points = []
-        # 取得所有月份（升冪排序）
-        months = sorted(set(pd.to_datetime(recent_data.index).to_period('M')))
-        for i in range(3, len(months)):
-            # 取前三個月的區間
-            prev3 = months[i-3:i]
-            # 取得這三個月的所有資料
-            mask = recent_data.index.to_period('M').isin(prev3)
-            three_month_data = recent_data[mask]
-            if len(three_month_data) == 0:
+        
+        # 修正：使用更精確的月份計算方法
+        # 將數據按月份分組
+        hist_data['year_month'] = hist_data.index.to_period('M')
+        monthly_groups = hist_data.groupby('year_month')
+        
+        # 獲取所有月份
+        all_months = sorted(monthly_groups.groups.keys())
+        
+        logger.info(f"📊 可用月份: {[str(m) for m in all_months]}")
+        
+        # 從第4個月開始計算（需要前3個月的數據）
+        for i in range(3, len(all_months)):
+            current_month = all_months[i]
+            
+            # 獲取前三個月的數據
+            prev3_months = all_months[i-3:i]
+            prev3_data = hist_data[hist_data['year_month'].isin(prev3_months)]
+            
+            if len(prev3_data) == 0:
+                logger.warning(f"⚠️ 月份 {current_month} 的前三個月數據不足")
                 continue
-            high = three_month_data['High'].max()
-            low = three_month_data['Low'].min()
+            
+            # 計算前三個月的最高價和最低價
+            high = prev3_data['High'].max()
+            low = prev3_data['Low'].min()
             pivot = (high + low) / 2
-            # 本月第一天
-            this_month = months[i].to_timestamp()
+            
+            # 獲取當前月份的數據
+            current_month_data = hist_data[hist_data['year_month'] == current_month]
+            
+            # 修正：確保每個月都有一個轉折點，使用當月第一個交易日
+            if len(current_month_data) > 0:
+                # 使用當月第一個交易日
+                first_trading_day = current_month_data.index.min()
+                point_date = first_trading_day.strftime('%Y-%m-%d')
+                logger.info(f"📊 轉折點: {point_date} (月份: {current_month}) = ${pivot:.2f}")
+            else:
+                # 如果當月沒有交易數據，使用月初日期
+                point_date = current_month.to_timestamp().strftime('%Y-%m-%d')
+                logger.warning(f"⚠️ 當月無交易數據，使用月初: {point_date}")
+            
             points.append({
-                'time': str(this_month)[:10],
+                'time': point_date,
                 'price': float(pivot),
                 'high': float(high),
                 'low': float(low),
-                'range': f"{prev3[0]}~{prev3[-1]}"
+                'range': f"{prev3_months[0]}~{prev3_months[-1]}"
             })
-            logger.info(f"📊 轉折點: {str(this_month)[:10]} ({prev3[0]}~{prev3[-1]}) = {pivot:.2f}")
 
+        # 按時間排序確保折線圖正確連接
+        points.sort(key=lambda x: x['time'])
+        
         logger.info(f"📊 轉折點計算完成，共 {len(points)} 個數據點")
+        if points:
+            prices = [p['price'] for p in points]
+            logger.info(f"    轉折點價格範圍: ${min(prices):.2f} - ${max(prices):.2f}")
+            logger.info(f"    轉折點時間範圍: {points[0]['time']} 到 {points[-1]['time']}")
+            
+            # 檢查每個月的點數
+            monthly_counts = {}
+            for point in points:
+                month = point['time'][:7]  # 取YYYY-MM部分
+                monthly_counts[month] = monthly_counts.get(month, 0) + 1
+            
+            logger.info(f"    每月點數統計:")
+            for month, count in sorted(monthly_counts.items()):
+                logger.info(f"      {month}: {count} 個點")
+            
+            # 檢查轉折點的連續性
+            logger.info(f"    轉折點詳細信息:")
+            for i, point in enumerate(points):
+                logger.info(f"      {i+1}. {point['time']} - ${point['price']:.2f} (基於{point['range']})")
+        else:
+            logger.info("    無轉折點數據")
+
         return points
+
     except Exception as e:
         logger.warning(f"⚠️ 轉折點計算錯誤: {e}")
         return []
@@ -905,11 +1005,23 @@ def calculate_ma125_line(hist_data):
         # 計算MA125
         ma_125_data = hist_data['Close'].rolling(window=125).mean().dropna()
         
-        # 轉換為圖表數據格式
+        # 轉換為圖表數據格式，確保時間格式與圖表數據一致
         ma_125_line_data = []
         for idx, val in ma_125_data.items():
+            # 確保時間格式與圖表數據一致，並正確處理時區
+            if hasattr(idx, 'tz_localize'):
+                if idx.tz is None:
+                    # 假設是UTC時間，轉換為台北時間
+                    idx_local = idx + timedelta(hours=8)
+                else:
+                    # 轉換為台北時間
+                    idx_local = idx.tz_convert('Asia/Taipei')
+            else:
+                # 假設是UTC時間，轉換為台北時間
+                idx_local = idx + timedelta(hours=8)
+            
             ma_125_line_data.append({
-                'time': str(idx)[:10],  # 取前10個字符作為日期
+                'time': idx_local.strftime('%Y-%m-%d'),
                 'price': float(val)
             })
         

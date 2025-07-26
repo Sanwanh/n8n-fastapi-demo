@@ -285,18 +285,6 @@
                             <span class="summary-value">${data.market_date || '今日'}</span>
                         </div>
                         <div class="summary-item">
-                            <span class="summary-label">信心水平:</span>
-                            <span class="summary-value">${data.confidence_level || '未知'}</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">趨勢方向:</span>
-                            <span class="summary-value">${data.trend_direction || '未知'}</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">風險評估:</span>
-                            <span class="summary-value">${data.risk_assessment || '未知'}</span>
-                        </div>
-                        <div class="summary-item">
                             <span class="summary-label">接收時間:</span>
                             <span class="summary-value">${data.received_time || '未知'}</span>
                         </div>
@@ -649,11 +637,13 @@ Webhook URL: ${result.webhook_url}`);
         .summary-label {
             color: var(--text-secondary);
             font-weight: 500;
+            white-space: nowrap;
         }
 
         .summary-value {
             color: var(--text-primary);
             font-weight: 600;
+            white-space: nowrap;
         }
 
         .summary-value.sentiment-positive {
@@ -699,6 +689,16 @@ Webhook URL: ${result.webhook_url}`);
                 flex-direction: column;
                 gap: 0.25rem;
                 text-align: center;
+            }
+
+            .summary-label {
+                white-space: nowrap;
+                min-width: fit-content;
+            }
+
+            .summary-value {
+                white-space: nowrap;
+                min-width: fit-content;
             }
         }
     </style>
