@@ -593,9 +593,39 @@
         function displayMarketData(data) {
             console.log('🎨 顯示市場數據:', data);
 
-            const sentimentClass = getSentimentClass(data.average_sentiment_score);
-            const sentimentText = getSentimentText(data.average_sentiment_score);
-            const sentimentEmoji = getSentimentEmoji(data.average_sentiment_score);
+            // 獲取 score 和 summary
+            let score = 0;
+            let summaryContent = '';
+
+            // 從 raw_data 中獲取 score
+            if (data.raw_data && data.raw_data.score !== undefined) {
+                score = data.raw_data.score;
+            } else if (data.average_sentiment_score !== undefined) {
+                score = data.average_sentiment_score;
+            }
+
+            // 從 raw_data 中獲取 summary
+            if (data.raw_data && data.raw_data.summary) {
+                summaryContent = data.raw_data.summary;
+            } else if (data.summary) {
+                summaryContent = data.summary;
+            } else if (data.message_content) {
+                summaryContent = data.message_content;
+            }
+
+            const sentimentClass = getSentimentClass(score);
+            const sentimentText = getSentimentText(score);
+            const sentimentEmoji = getSentimentEmoji(score);
+
+            // 處理emailReport內容（用於郵件發送）
+            let emailReportContent = '';
+            if (data.email_report) {
+                emailReportContent = data.email_report;
+                console.log('📧 找到emailReport內容，長度:', emailReportContent.length);
+            } else if (data.raw_data && data.raw_data.emailReport) {
+                emailReportContent = data.raw_data.emailReport;
+                console.log('📧 從raw_data找到emailReport內容，長度:', emailReportContent.length);
+            }
 
             const display = document.getElementById('market-data-display');
             display.innerHTML = `
@@ -603,11 +633,11 @@
                     <div class="data-row sentiment-highlight">
                         <div class="data-label">
                             <i class="fas fa-heart-pulse"></i>
-                            情感分數
+                            市場情緒指數
                         </div>
                         <div class="data-value">
                             <span class="sentiment-score sentiment-${sentimentClass}">
-                                ${sentimentEmoji} ${sentimentText} (${data.average_sentiment_score || 0}分)
+                                ${sentimentEmoji} ${sentimentText} (${score}/100)
                             </span>
                         </div>
                     </div>
@@ -620,18 +650,19 @@
                         <div class="data-value">${data.market_date || '未知'}</div>
                     </div>
 
-                    <div class="data-row full-width">
+                                        <div class="data-row full-width">
                         <div class="data-label">
                             <i class="fas fa-newspaper"></i>
-                            分析內容
+                            市場情緒摘要
                         </div>
                         <div class="market-content" id="market-content">
-                            ${data.raw_data.message.content || ''}
+                            ${summaryContent || '無摘要內容'}
                         </div>
-                        ${data.raw_data.message.content && data.raw_data.message.content.length > 200
+                        ${(summaryContent && summaryContent.length > 200)
                     ? '<button class="expand-btn" onclick="toggleMarketContent()">展開全文</button>'
                     : ''}
                     </div>
+
                     <div class="data-row">
                         <div class="data-label">
                             <i class="fas fa-clock"></i>
@@ -1444,6 +1475,19 @@
             const isExpanded = content.style.maxHeight === 'none';
 
             content.style.maxHeight = isExpanded ? '200px' : 'none';
+            content.style.overflow = isExpanded ? 'hidden' : 'visible';
+
+            const btn = content.nextElementSibling;
+            if (btn && btn.classList.contains('expand-btn')) {
+                btn.textContent = isExpanded ? '展開全文' : '收起';
+            }
+        }
+
+        function toggleEmailReportContent() {
+            const content = document.getElementById('email-report-content');
+            const isExpanded = content.style.maxHeight === 'none';
+
+            content.style.maxHeight = isExpanded ? '300px' : 'none';
             content.style.overflow = isExpanded ? 'hidden' : 'visible';
 
             const btn = content.nextElementSibling;
@@ -2371,6 +2415,79 @@
 
         .analysis-content::-webkit-scrollbar-thumb:hover {
             background: var(--text-muted);
+        }
+
+        /* Email Report 內容樣式 */
+        .email-report-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem;
+            margin-top: 0.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .email-report-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .email-report-content::-webkit-scrollbar-track {
+            background: var(--bg-glass);
+            border-radius: 3px;
+        }
+
+        .email-report-content::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .email-report-content::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* 市場分析報告標題樣式 */
+        .email-report-content h2 {
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .email-report-content h3 {
+            color: var(--text-primary);
+            margin: 1rem 0 0.5rem 0;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .email-report-content p {
+            margin: 0.5rem 0;
+            line-height: 1.6;
+        }
+
+        .email-report-content ul {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .email-report-content li {
+            margin: 0.25rem 0;
+        }
+
+        .email-report-content hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 1rem 0;
+        }
+
+        .email-report-content strong {
+            color: var(--text-primary);
+            font-weight: 600;
         }
     </style>
 </body>

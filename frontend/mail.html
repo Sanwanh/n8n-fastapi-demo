@@ -236,8 +236,28 @@
 
         // 顯示市場數據（簡化版）
         function displayMarketData(data) {
-            const sentimentClass = getSentimentClass(data.average_sentiment_score);
-            const sentimentText = getSentimentText(data.average_sentiment_score);
+            // 獲取 score 和 summary
+            let score = 0;
+            let summaryContent = '';
+            
+            // 從 raw_data 中獲取 score
+            if (data.raw_data && data.raw_data.score !== undefined) {
+                score = data.raw_data.score;
+            } else if (data.average_sentiment_score !== undefined) {
+                score = data.average_sentiment_score;
+            }
+            
+            // 從 raw_data 中獲取 summary
+            if (data.raw_data && data.raw_data.summary) {
+                summaryContent = data.raw_data.summary;
+            } else if (data.summary) {
+                summaryContent = data.summary;
+            } else if (data.message_content) {
+                summaryContent = data.message_content;
+            }
+
+            const sentimentClass = getSentimentClass(score);
+            const sentimentText = getSentimentText(score);
 
             document.getElementById('market-data-display').innerHTML = `
                 <div class="market-data-preview">
@@ -251,8 +271,8 @@
                             <span class="summary-value sentiment-${sentimentClass}">${sentimentText}</span>
                         </div>
                         <div class="summary-item">
-                            <span class="summary-label">情感分數:</span>
-                            <span class="summary-value">${Math.round(data.average_sentiment_score || 0)}</span>
+                            <span class="summary-label">情緒指數:</span>
+                            <span class="summary-value">${score}/100</span>
                         </div>
                         <div class="summary-item">
                             <span class="summary-label">分析日期:</span>
@@ -265,9 +285,9 @@
                     </div>
 
                     <div class="content-preview">
-                        <h5><i class="fas fa-newspaper"></i> 分析內容摘要</h5>
+                        <h5><i class="fas fa-newspaper"></i> 市場情緒摘要</h5>
                         <div class="content-snippet">
-                            ${formatContentPreview(data.raw_data?.message?.content || data.message_content || '無分析內容')}
+                            ${formatContentPreview(summaryContent || '無摘要內容')}
                         </div>
                     </div>
                 </div>
@@ -519,8 +539,9 @@ Webhook URL: ${result.webhook_url}`);
         .form-actions {
             display: flex;
             justify-content: center;
-            gap: 1rem;
+            gap: 1.5rem;
             padding-top: 1rem;
+            flex-wrap: wrap;
         }
 
         .btn {

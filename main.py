@@ -69,8 +69,8 @@ def load_config():
         },
         'SYSTEM_INFO': {
             'name': 'Market Analysis API',
-            'version': '2.1.2',
-            'description': '智能市場分析API服務 - 修正版'
+            'version': '2.1.4',
+            'description': '智能市場分析API服務'
         }
     }
 
@@ -204,13 +204,13 @@ async def receive_n8n_data(request: Request):
         global stored_data, system_stats
 
         raw_data = await request.json()
-        # logger.info(f"📨 收到 N8N 原始資料大小: {len(json.dumps(raw_data, ensure_ascii=False))} 字元")
-        # logger.info(f"📨 收到 N8N 資料: {json.dumps(raw_data, ensure_ascii=False)[:500]}...")
+        logger.info(f"📨 收到 N8N 原始資料大小: {len(json.dumps(raw_data, ensure_ascii=False))} 字元")
+        logger.info(f"📨 收到 N8N 資料: {json.dumps(raw_data, ensure_ascii=False)[:500]}...")
 
         # 增強的數據處理邏輯
         if isinstance(raw_data, list) and len(raw_data) > 0:
             market_data = raw_data[0]
-            # logger.info("✅ 處理陣列格式數據，取第一個元素")
+            logger.info("✅ 處理陣列格式數據，取第一個元素")
         elif isinstance(raw_data, dict):
             market_data = raw_data
             logger.info("✅ 處理字典格式數據")
@@ -219,10 +219,20 @@ async def receive_n8n_data(request: Request):
             raise HTTPException(status_code=400, detail=f"無效的資料格式: {type(raw_data)}")
 
         # 詳細記錄接收到的數據欄位
-        # logger.info(f"📊 數據欄位: {list(market_data.keys())}")
+        logger.info(f"📊 數據欄位: {list(market_data.keys())}")
 
         # 構建儲存的數據
         current_time = datetime.now()
+        
+        # 處理emailReport內容
+        email_report = ""
+        if "data" in market_data and isinstance(market_data["data"], dict):
+            email_report = market_data["data"].get("emailReport", "")
+            logger.info(f"📧 找到emailReport內容，長度: {len(email_report)} 字元")
+        elif "emailReport" in market_data:
+            email_report = market_data.get("emailReport", "")
+            logger.info(f"📧 直接找到emailReport內容，長度: {len(email_report)} 字元")
+        
         stored_data = {
             "average_sentiment_score": float(market_data.get("average_sentiment_score", 0)),
             "message_content": str(market_data.get("message_content", "")),
@@ -233,6 +243,7 @@ async def receive_n8n_data(request: Request):
             "received_time": current_time.strftime("%Y-%m-%d %H:%M:%S"),
             "received_timestamp": current_time.isoformat(),
             "raw_data": market_data,
+            "email_report": email_report,  # 新增emailReport欄位
             "data_source": "N8N Webhook",
             "processing_time": datetime.now().isoformat()
         }

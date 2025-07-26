@@ -461,6 +461,7 @@ body {
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     border-radius: var(--radius);
     box-shadow: var(--shadow);
+    position: relative;
 }
 
 .card-icon.gold-icon {
@@ -470,6 +471,15 @@ body {
 .card-icon i {
     font-size: 1.25rem;
     color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 .card-header h2 {
@@ -1512,9 +1522,11 @@ body {
 
 .signal-status {
     font-weight: bold;
-    padding: 1rem 2rem;
+    padding: 0.5rem 1rem;
     border-radius: var(--radius);
-    font-size: 1.2rem;
+    font-size: 0.9rem;
+    min-width: 80px;
+    text-align: center;
 }
 
 .signal-success {
@@ -1537,9 +1549,9 @@ body {
 
 .signal-description {
     color: var(--text-secondary);
-    font-size: 1.2rem;
-    line-height: 1.7;
-    padding-top: 1.5rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    padding-top: 0.5rem;
 }
 
 /* Accordion 收合樣式 - 獨立框框風格 */
@@ -1608,6 +1620,9 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    aspect-ratio: 1;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
 }
 
 .accordion-header:hover .accordion-icon {
