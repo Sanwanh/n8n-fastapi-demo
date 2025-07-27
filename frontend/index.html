@@ -646,7 +646,7 @@
                             市場情緒摘要
                         </div>
                         <div class="market-content" id="market-content">
-                            ${summaryContent || '無摘要內容'}
+                            ${summaryContent || '無摘要內��'}
                         </div>
                         ${(summaryContent && summaryContent.length > 200)
                     ? '<button class="expand-btn" onclick="toggleMarketContent()">展開全文</button>'
@@ -683,6 +683,7 @@
                             <i class="fas ${priceChangeIcon}"></i>
                             <span>${data.change >= 0 ? '+' : ''}${data.change?.toFixed(2) || 'N/A'}</span>
                             <span>(${data.change_percent >= 0 ? '+' : ''}${data.change_percent?.toFixed(2) || 'N/A'}%)</span>
+                            <small class="change-label"></small>
                         </div>
                     </div>
 
@@ -1558,12 +1559,12 @@
                             <span class="sentiment-score">${sentimentScore}/100分</span>
                             <span class="sentiment-text sentiment-${sentimentClass}">${sentimentText}</span>
                         </div>
-                        
+
                         <div class="market-details">
                             <p><strong>市場日期:</strong> ${marketData.market_date || '未知'}</p>
                             <p><strong>接收時間:</strong> ${marketData.received_time || '未知'}</p>
                         </div>
-                        
+
                         <div class="analysis-section">
                             <p><strong>市場情緒摘要:</strong></p>
                             <div class="analysis-content">
@@ -1688,7 +1689,8 @@
         function calculateStandardDeviation(values) {
             const avg = values.reduce((a, b) => a + b) / values.length;
             const squareDiffs = values.map(value => Math.pow(value - avg, 2));
-            const avgSquareDiff = squareDiffs.reduce((a, b) => a + b) / squareDiffs.length;
+            // 使用樣本標準差 (n-1)，與後端保持一致
+            const avgSquareDiff = squareDiffs.reduce((a, b) => a + b) / (squareDiffs.length - 1);
             return Math.sqrt(avgSquareDiff);
         }
 
