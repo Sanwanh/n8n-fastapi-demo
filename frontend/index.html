@@ -701,7 +701,7 @@
                                 <span class="stat-value">$${data.avg_price?.toFixed(2) || 'N/A'}</span>
                             </div>
                             <div class="stat-item">
-                                <span class="stat-label">年波動率</span>
+                                <span class="stat-label">年標準差</span>
                                 <span class="stat-value">${data.volatility?.toFixed(2) || 'N/A'}</span>
                             </div>
 
@@ -1496,7 +1496,7 @@
                     <p><strong>當日高:</strong> ${goldPriceData.today_high?.toFixed(2) || 'N/A'}</p>
                     <p><strong>當日低:</strong> ${goldPriceData.today_low?.toFixed(2) || 'N/A'}</p>
                     <p><strong>年平均價格:</strong> ${goldPriceData.avg_price?.toFixed(2) || 'N/A'}</p>
-                    <p><strong>年波動率:</strong> ${goldPriceData.volatility?.toFixed(2) || 'N/A'}</p>
+                    <p><strong>年標準差:</strong> ${goldPriceData.volatility?.toFixed(2) || 'N/A'}</p>
                     <p><strong>市場狀態:</strong> ${getMarketStatusText(goldPriceData.market_status)}</p>
                     <p><strong>貨幣單位:</strong> ${goldPriceData.currency || 'USD'}</p>
                     <p><strong>數據點數量:</strong> ${goldPriceData.data_points || 0}</p>
