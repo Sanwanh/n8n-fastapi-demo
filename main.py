@@ -110,6 +110,7 @@ class MailSenderRequest(BaseModel):
 # 生命週期管理
 from contextlib import asynccontextmanager
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """應用生命週期管理"""
@@ -132,11 +133,12 @@ async def lifespan(app: FastAPI):
             logger.warning("⚠️ 黃金價格 API 可能有問題，將使用模擬數據")
     except Exception as e:
         logger.warning(f"⚠️ 黃金價格 API 測試失敗: {str(e)}，將使用模擬數據")
-    
+
     yield
-    
+
     # 關閉時
     logger.info("🛑 市場分析系統關閉中...")
+
 
 # 初始化 FastAPI
 app = FastAPI(
@@ -223,7 +225,7 @@ async def receive_n8n_data(request: Request):
 
         # 構建儲存的數據
         current_time = datetime.now()
-        
+
         # 處理emailReport內容
         email_report = ""
         if "data" in market_data and isinstance(market_data["data"], dict):
@@ -232,7 +234,7 @@ async def receive_n8n_data(request: Request):
         elif "emailReport" in market_data:
             email_report = market_data.get("emailReport", "")
             logger.info(f"📧 直接找到emailReport內容，長度: {len(email_report)} 字元")
-        
+
         stored_data = {
             "average_sentiment_score": float(market_data.get("average_sentiment_score", 0)),
             "message_content": str(market_data.get("message_content", "")),
@@ -292,10 +294,10 @@ async def get_current_data():
         # logger.info(f"📊 當前儲存數據狀態: {'有數據' if stored_data else '無數據'}")
 
         # if stored_data:
-            # logger.info(f"📊 數據詳情:")
-            # logger.info(f"   情感分數: {stored_data.get('average_sentiment_score', 'N/A')}")
-            # logger.info(f"   內容長度: {len(stored_data.get('message_content', ''))} 字元")
-            # logger.info(f"   接收時間: {stored_data.get('received_time', 'N/A')}")
+        # logger.info(f"📊 數據詳情:")
+        # logger.info(f"   情感分數: {stored_data.get('average_sentiment_score', 'N/A')}")
+        # logger.info(f"   內容長度: {len(stored_data.get('message_content', ''))} 字元")
+        # logger.info(f"   接收時間: {stored_data.get('received_time', 'N/A')}")
 
         # 檢查數據是否過期（超過1小時）
         data_age_minutes = 0
@@ -351,7 +353,8 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
 
         # 獲取黃金期貨數據
         try:
-            hist_data, info, current_price, latest_processing_time = await get_gold_futures_data_enhanced(period, interval)
+            hist_data, info, current_price, latest_processing_time = await get_gold_futures_data_enhanced(period,
+                                                                                                          interval)
 
             if hist_data is None or hist_data.empty:
                 logger.warning("⚠️ 主要數據源無數據，使用備選方案...")
@@ -395,7 +398,7 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
                 else:
                     # 假設是UTC時間，轉換為台北時間
                     idx_local = idx + timedelta(hours=8)
-                
+
                 data_point = {
                     "time": idx_local.strftime('%Y-%m-%d'),
                     "price": float(row['Close']) if not pd.isna(row['Close']) else stats['current_price'],
@@ -441,13 +444,13 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
                 else:
                     # 假設是UTC時間，轉換為台北時間
                     idx_local = idx + timedelta(hours=8)
-                
+
                 ma_5_line_data.append({
                     'time': idx_local.strftime('%Y-%m-%d'),
                     'price': float(val)
                 })
             ma_lines["ma_5"] = ma_5_line_data
-        
+
         if len(hist_data) >= 20:
             ma_20_data = hist_data['Close'].rolling(window=20).mean().dropna()
             ma_20_line_data = []
@@ -463,7 +466,7 @@ async def get_gold_price(period: str = "1y", interval: str = "1d"):
                 else:
                     # 假設是UTC時間，轉換為台北時間
                     idx_local = idx + timedelta(hours=8)
-                
+
                 ma_20_line_data.append({
                     'time': idx_local.strftime('%Y-%m-%d'),
                     'price': float(val)
@@ -653,7 +656,7 @@ async def get_gold_futures_data_enhanced(period: str, interval: str):
                     else:
                         # 假設是UTC時間，轉換為台北時間
                         latest_time_local = latest_time + timedelta(hours=8)
-                    
+
                     latest_time_formatted = latest_time_local.strftime('%Y-%m-%d %H:%M')
                     # logger.info(f"✅ 當天數據處理完成，最新時間: {latest_time_formatted}")
                 else:
@@ -716,18 +719,30 @@ def calculate_gold_statistics(data):
     try:
         close_prices = data['Close']
 
+        # 計算日變化（當前價格與昨天收盤價格的差額）
+        current_price = float(close_prices.iloc[-1])
+        yesterday_price = float(close_prices.iloc[-2]) if len(close_prices) > 1 else current_price
+
+        daily_change = current_price - yesterday_price
+        daily_change_pct = ((daily_change / yesterday_price) * 100) if yesterday_price != 0 else 0
+
+        # 計算年度標準差（使用整個數據集）
+        # 使用 ddof=1 來計算樣本標準差，與前端的計算方法保持一致
+        annual_volatility = float(close_prices.std(ddof=1))
+
         stats = {
-            'current_price': float(close_prices.iloc[-1]),
+            'current_price': current_price,
             'max_price': float(close_prices.max()),
             'min_price': float(close_prices.min()),
             'avg_price': float(close_prices.mean()),
-            'price_change': float(close_prices.iloc[-1] - close_prices.iloc[0]),
-            'price_change_pct': float(((close_prices.iloc[-1] - close_prices.iloc[0]) / close_prices.iloc[0]) * 100),
-            'volatility': float(close_prices.std()),
-            'latest_date': close_prices.index[-1]
+            'price_change': daily_change,  # 日變化
+            'price_change_pct': daily_change_pct,  # 日變化百分比
+            'volatility': annual_volatility,  # 年度標準差
+            'latest_date': close_prices.index[-1],
+            'yesterday_price': yesterday_price  # 添加昨天價格用於調試
         }
 
-        # logger.info(f"📊 統計計算完成: 當前=${stats['current_price']:.2f}, 變化={stats['price_change']:+.2f}")
+        # logger.info(f"📊 統計計算完成: 當前=${stats['current_price']:.2f}, 日變化={stats['price_change']:+.2f}")
         return stats
     except Exception as e:
         logger.error(f"❌ 統計計算失敗: {e}")
@@ -825,22 +840,22 @@ def calculate_monthly_average_line(hist_data):
         # 確保數據有日期索引
         if not isinstance(hist_data.index, pd.DatetimeIndex):
             hist_data.index = pd.to_datetime(hist_data.index)
-        
+
         # 統一時區處理 - 轉換為無時區的日期
         hist_data.index = hist_data.index.tz_localize(None)
-        
+
         # 按月份分組並計算每月的最高和最低價格
         monthly_data = hist_data.groupby(hist_data.index.to_period('M')).agg({
             'High': 'max',
             'Low': 'min'
         })
-        
+
         # 計算每月最高最低價格的平均值
         monthly_averages = (monthly_data['High'] + monthly_data['Low']) / 2
-        
+
         # 取最近12個月的數據
         monthly_averages = monthly_averages.tail(12)
-        
+
         # 轉換為圖表數據格式 - 每個月只創建一個數據點
         monthly_line_data = []
         for period, avg_price in monthly_averages.items():
@@ -851,7 +866,7 @@ def calculate_monthly_average_line(hist_data):
                 except Exception as e:
                     logger.warning(f"⚠️ 轉換月份 {period} 時出錯: {e}")
                     continue
-                
+
                 # 找到該月的最後一個交易日
                 month_trading_days = [date for date in hist_data.index if date <= month_end]
                 if month_trading_days:
@@ -863,12 +878,12 @@ def calculate_monthly_average_line(hist_data):
             except Exception as e:
                 logger.warning(f"⚠️ 處理月份 {period} 時出錯: {e}")
                 continue
-        
+
         logger.info(f"📊 月平均線計算完成，共 {len(monthly_line_data)} 個數據點")
         logger.info(f"    月平均價格範圍: ${monthly_averages.min():.2f} - ${monthly_averages.max():.2f}")
-        
+
         return monthly_line_data
-        
+
     except Exception as e:
         logger.warning(f"⚠️ 每月平均線計算錯誤: {e}")
         return []
@@ -882,7 +897,7 @@ def calculate_quarterly_average_line(hist_data):
         # 確保索引為 DatetimeIndex
         if not isinstance(hist_data.index, pd.DatetimeIndex):
             hist_data.index = pd.to_datetime(hist_data.index)
-        
+
         # 統一處理時區問題，轉換為台北時間 (+8)
         if hist_data.index.tz is None:
             # 假設是UTC時間，轉換為台北時間
@@ -890,55 +905,55 @@ def calculate_quarterly_average_line(hist_data):
         else:
             # 轉換為台北時間
             hist_data.index = hist_data.index.tz_convert('Asia/Taipei')
-        
+
         # 移除時區信息，統一為本地時間
         hist_data.index = hist_data.index.tz_localize(None)
 
         # 確保數據按時間排序
         hist_data = hist_data.sort_index()
-        
+
         # 獲取數據的時間範圍
         start_date = hist_data.index.min()
         end_date = hist_data.index.max()
-        
+
         logger.info(f"📊 數據時間範圍: {start_date.strftime('%Y-%m-%d')} 到 {end_date.strftime('%Y-%m-%d')}")
-        
+
         if len(hist_data) < 90:
             logger.warning("⚠️ 數據不足90天，無法計算轉折點")
             return []
 
         points = []
-        
+
         # 修正：使用更精確的月份計算方法
         # 將數據按月份分組
         hist_data['year_month'] = hist_data.index.to_period('M')
         monthly_groups = hist_data.groupby('year_month')
-        
+
         # 獲取所有月份
         all_months = sorted(monthly_groups.groups.keys())
-        
+
         logger.info(f"📊 可用月份: {[str(m) for m in all_months]}")
-        
+
         # 從第4個月開始計算（需要前3個月的數據）
         for i in range(3, len(all_months)):
             current_month = all_months[i]
-            
+
             # 獲取前三個月的數據
-            prev3_months = all_months[i-3:i]
+            prev3_months = all_months[i - 3:i]
             prev3_data = hist_data[hist_data['year_month'].isin(prev3_months)]
-            
+
             if len(prev3_data) == 0:
                 logger.warning(f"⚠️ 月份 {current_month} 的前三個月數據不足")
                 continue
-            
+
             # 計算前三個月的最高價和最低價
             high = prev3_data['High'].max()
             low = prev3_data['Low'].min()
             pivot = (high + low) / 2
-            
+
             # 獲取當前月份的數據
             current_month_data = hist_data[hist_data['year_month'] == current_month]
-            
+
             # 修正：確保每個月都有一個轉折點，使用當月第一個交易日
             if len(current_month_data) > 0:
                 # 使用當月第一個交易日
@@ -949,7 +964,7 @@ def calculate_quarterly_average_line(hist_data):
                 # 如果當月沒有交易數據，使用月初日期
                 point_date = current_month.to_timestamp().strftime('%Y-%m-%d')
                 logger.warning(f"⚠️ 當月無交易數據，使用月初: {point_date}")
-            
+
             points.append({
                 'time': point_date,
                 'price': float(pivot),
@@ -960,27 +975,27 @@ def calculate_quarterly_average_line(hist_data):
 
         # 按時間排序確保折線圖正確連接
         points.sort(key=lambda x: x['time'])
-        
+
         logger.info(f"📊 轉折點計算完成，共 {len(points)} 個數據點")
         if points:
             prices = [p['price'] for p in points]
             logger.info(f"    轉折點價格範圍: ${min(prices):.2f} - ${max(prices):.2f}")
             logger.info(f"    轉折點時間範圍: {points[0]['time']} 到 {points[-1]['time']}")
-            
+
             # 檢查每個月的點數
             monthly_counts = {}
             for point in points:
                 month = point['time'][:7]  # 取YYYY-MM部分
                 monthly_counts[month] = monthly_counts.get(month, 0) + 1
-            
+
             logger.info(f"    每月點數統計:")
             for month, count in sorted(monthly_counts.items()):
                 logger.info(f"      {month}: {count} 個點")
-            
+
             # 檢查轉折點的連續性
             logger.info(f"    轉折點詳細信息:")
             for i, point in enumerate(points):
-                logger.info(f"      {i+1}. {point['time']} - ${point['price']:.2f} (基於{point['range']})")
+                logger.info(f"      {i + 1}. {point['time']} - ${point['price']:.2f} (基於{point['range']})")
         else:
             logger.info("    無轉折點數據")
 
@@ -997,14 +1012,14 @@ def calculate_ma125_line(hist_data):
         # 確保數據有日期索引
         if not isinstance(hist_data.index, pd.DatetimeIndex):
             hist_data.index = pd.to_datetime(hist_data.index)
-        
+
         if len(hist_data) < 125:
             logger.warning("⚠️ 數據不足125天，無法計算MA125")
             return []
-        
+
         # 計算MA125
         ma_125_data = hist_data['Close'].rolling(window=125).mean().dropna()
-        
+
         # 轉換為圖表數據格式，確保時間格式與圖表數據一致
         ma_125_line_data = []
         for idx, val in ma_125_data.items():
@@ -1019,17 +1034,17 @@ def calculate_ma125_line(hist_data):
             else:
                 # 假設是UTC時間，轉換為台北時間
                 idx_local = idx + timedelta(hours=8)
-            
+
             ma_125_line_data.append({
                 'time': idx_local.strftime('%Y-%m-%d'),
                 'price': float(val)
             })
-        
+
         logger.info(f"📊 MA125計算完成，共 {len(ma_125_line_data)} 個數據點")
         logger.info(f"    最新MA125值: ${ma_125_data.iloc[-1]:.2f}")
-        
+
         return ma_125_line_data
-        
+
     except Exception as e:
         logger.warning(f"⚠️ MA125計算錯誤: {e}")
         return []
@@ -1040,32 +1055,32 @@ def detect_golden_death_cross(hist_data):
     try:
         if len(hist_data) < 20:
             return {"golden_cross": False, "death_cross": False, "message": "", "status": "normal"}
-        
+
         # 計算MA20和MA5
         ma_20 = hist_data['Close'].rolling(window=20).mean()
         ma_5 = hist_data['Close'].rolling(window=5).mean()
-        
+
         # 獲取最近幾個數據點進行比較
         recent_data = hist_data.tail(10)
         recent_ma20 = ma_20.tail(10)
         recent_ma5 = ma_5.tail(10)
-        
+
         # 檢查是否有足夠的數據
         if recent_ma20.isna().all() or recent_ma5.isna().all():
             return {"golden_cross": False, "death_cross": False, "message": "", "status": "normal"}
-        
+
         # 獲取最新的MA值，確保轉換為Python原生類型
         current_ma20 = float(recent_ma20.iloc[-1])
         current_ma5 = float(recent_ma5.iloc[-1])
         prev_ma20 = float(recent_ma20.iloc[-2]) if len(recent_ma20) > 1 else current_ma20
         prev_ma5 = float(recent_ma5.iloc[-2]) if len(recent_ma5) > 1 else current_ma5
-        
+
         # 檢測黃金交叉（MA20從下方穿越MA5）
         golden_cross = bool((prev_ma20 < prev_ma5) and (current_ma20 > current_ma5))
-        
+
         # 檢測死亡交叉（MA20從上方穿越MA5）
         death_cross = bool((prev_ma20 > prev_ma5) and (current_ma20 < current_ma5))
-        
+
         message = ""
         status = "normal"
         if golden_cross:
@@ -1080,7 +1095,7 @@ def detect_golden_death_cross(hist_data):
             message = "⚪ 正常：MA20與MA5無交叉信號"
             status = "normal"
             logger.info(f"⚪ 無交叉信號: MA20=${current_ma20:.2f}, MA5=${current_ma5:.2f}")
-        
+
         return {
             "golden_cross": golden_cross,
             "death_cross": death_cross,
@@ -1089,7 +1104,7 @@ def detect_golden_death_cross(hist_data):
             "current_ma20": current_ma20,
             "current_ma5": current_ma5
         }
-        
+
     except Exception as e:
         logger.warning(f"⚠️ 交叉檢測錯誤: {e}")
         return {"golden_cross": False, "death_cross": False, "message": "", "status": "normal"}
@@ -1101,18 +1116,18 @@ def calculate_yearly_average_line(hist_data):
         # 確保數據有日期索引
         if not isinstance(hist_data.index, pd.DatetimeIndex):
             hist_data.index = pd.to_datetime(hist_data.index)
-        
+
         # 計算過去一年的平均價格
         one_year_ago = hist_data.index.max() - pd.DateOffset(years=1)
         yearly_data = hist_data[hist_data.index >= one_year_ago]
-        
+
         if len(yearly_data) == 0:
             logger.warning("⚠️ 沒有足夠的數據計算年平均價格")
             return []
-        
+
         # 計算年平均價格
         yearly_avg_price = yearly_data['Close'].mean()
-        
+
         # 創建一條水平線，覆蓋整個時間範圍
         yearly_line_data = []
         for date in hist_data.index:
@@ -1120,37 +1135,66 @@ def calculate_yearly_average_line(hist_data):
                 'time': str(date)[:10],  # 取前10個字符作為日期
                 'price': float(yearly_avg_price)
             })
-        
+
         logger.info(f"📊 年平均價格計算完成: ${yearly_avg_price:.2f}")
         logger.info(f"    數據範圍: {str(yearly_data.index.min())[:10]} 至 {str(yearly_data.index.max())[:10]}")
         logger.info(f"    數據點數: {len(yearly_data)}")
-        
+
         return yearly_line_data
-        
+
     except Exception as e:
         logger.warning(f"⚠️ 年平均價格計算錯誤: {e}")
         return []
 
 
 def determine_market_status():
-    """判斷市場狀態"""
+    """判斷市場狀態 - 黃金期貨市場時間 (美東時間)"""
     try:
-        now = datetime.now()
-        weekday = now.weekday()  # 0=Monday, 6=Sunday
-        hour = now.hour
+        from datetime import timezone, timedelta
 
-        # 簡化的市場開放邏輯
+        # 獲取美東時間
+        # 注意：這裡簡化處理，實際應該考慮夏令時間
+        # 美東時間 = UTC - 5小時 (標準時間) 或 UTC - 4小時 (夏令時間)
+        utc_now = datetime.now(timezone.utc)
+
+        # 簡化：假設是標準時間 (UTC - 5)
+        # 實際應用中應該使用 pytz 或 zoneinfo 來正確處理時區
+        est_offset = timedelta(hours=5)
+        est_now = utc_now - est_offset
+
+        weekday = est_now.weekday()  # 0=Monday, 6=Sunday
+        hour = est_now.hour
+        minute = est_now.minute
+
+        # 黃金期貨市場時間 (美東時間 EST)
+        # 週日 6:00 PM - 週五 5:00 PM (美東時間)
+        # 週五 5:00 PM - 週日 6:00 PM 休市
+
+        # 調試信息
+        logger.info(f"🔍 市場狀態判斷: UTC={utc_now.strftime('%Y-%m-%d %H:%M')}, "
+                    f"EST={est_now.strftime('%Y-%m-%d %H:%M')}, "
+                    f"週{weekday + 1}, {hour:02d}:{minute:02d}")
+
         if weekday < 5:  # Monday to Friday
-            if 18 <= hour or hour <= 17:
+            logger.info("✅ 週一到週五 - 開市")
+            return "open"  # 週一到週五都是開市
+        elif weekday == 5:  # Saturday
+            logger.info("❌ 週六 - 休市")
+            return "closed"  # 週六休市
+        elif weekday == 6:  # Sunday
+            # 週日 6:00 PM (18:00) 後開市
+            if hour >= 18:
+                logger.info("✅ 週日 18:00後 - 開市")
                 return "open"
             else:
+                logger.info("❌ 週日 18:00前 - 休市")
                 return "closed"
-        elif weekday == 6:  # Sunday
-            if hour >= 18:
-                return "open"
+        else:
+            logger.info("❌ 未知週期 - 休市")
+            return "closed"
 
-        return "closed"
-    except Exception:
+    except Exception as e:
+        logger.error(f"❌ 市場狀態判斷失敗: {e}")
         return "unknown"
 
 
@@ -1243,7 +1287,7 @@ async def send_mail_to_n8n(mail_data: MailSenderRequest):
         # logger.info(f"   收件人: {mail_data.recipient_email}")
         # logger.info(f"   自訂訊息: {mail_data.custom_message[:50] if mail_data.custom_message else '無'}...")
         # logger.info(f"   主題: {mail_data.subject}")
-        
+
         if not stored_data:
             logger.error("❌ 沒有可用的市場分析資料")
             raise HTTPException(status_code=400, detail="沒有可用的市場分析資料")
@@ -1355,13 +1399,13 @@ async def debug_stored_data():
                 "data": None,
                 "timestamp": datetime.now().isoformat()
             }
-        
+
         # 構建示例郵件數據（不實際發送）
         sample_mail_data = {
             "recipient_email": "test@example.com",
             "custom_message": "這是一個測試訊息"
         }
-        
+
         # 模擬郵件發送時的數據結構
         sample_send_data = {
             **stored_data,
@@ -1387,7 +1431,7 @@ async def debug_stored_data():
                 "emoji": get_market_emoji(stored_data.get("average_sentiment_score", 0))
             }
         }
-        
+
         return {
             "status": "success",
             "message": "當前存儲的數據結構",
@@ -1395,7 +1439,7 @@ async def debug_stored_data():
             "timestamp": datetime.now().isoformat(),
             "webhook_url": CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url']
         }
-        
+
     except Exception as e:
         logger.error(f"❌ 調試數據端點錯誤: {str(e)}")
         return {
@@ -1512,7 +1556,6 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 
 def main():
-
     uvicorn.run(
         app,
         host=CONFIG['SERVER_CONFIG']['host'],
