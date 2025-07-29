@@ -21,6 +21,8 @@
 - **📝 增強日誌系統** - 詳細的錯誤追蹤和系統監控
 - **🔍 健康檢查** - 完整的系統健康監控
 - **📱 響應式設計** - 支援桌面和移動設備
+- **🔄 自動刷新** - 每分鐘自動更新數據
+- **🎨 動畫效果** - 背景動畫和互動效果
 
 ## 📁 系統架構
 
@@ -44,7 +46,7 @@ n8n_web_demo/
 │   ├── 黃金價格統計
 │   ├── 技術指標計算
 │   ├── 移動平均線 (MA5, MA20, MA50, MA125)
-│   ├── 轉折點
+│   ├── 轉折點分析
 │   └── 情感分析處理
 ├── 📋 配置與部署
 │   ├── requirements.txt
@@ -118,6 +120,7 @@ python main.py
 | **API 服務** | http://localhost:8089 | RESTful API 接口 |
 | **API 文檔** | http://localhost:8089/api/docs | Swagger API 文檔 |
 | **健康檢查** | http://localhost:8089/health | 服務健康狀態 |
+| **ngrok 隧道** | http://localhost:4041 | 外部訪問隧道 |
 
 ## 📊 主要功能
 
@@ -125,6 +128,9 @@ python main.py
 
 - **數據來源**: Yahoo Finance (GC=F 黃金期貨)
 - **更新頻率**: 每分鐘自動刷新
+- **支援時間週期**: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y
+- **支援時間間隔**: 1m, 5m, 15m, 30m, 1h, 1d
+- **前端預設**: 固定為 1y 期間，1d 間隔
 - **顯示內容**:
   - 當前價格 (USD/oz)
   - 價格變化和變化百分比
@@ -132,18 +138,25 @@ python main.py
   - 平均價格和波動率
   - 市場狀態（開市/休市）
   - 最後更新時間
-  - 互動式價格圖表
+  - 互動式價格圖表 (Chart.js)
   - 技術指標 (RSI, MA線)
   - 黃金交叉/死亡交叉檢測
+  - 可切換的移動平均線顯示
+  - 響應式圖表設計
 
 ### 2. 智能市場情感分析
 
 - **數據來源**: N8N 工作流程
 - **分析內容**:
-  - 情感分析分數 (0 到 100)
-  - 市場情感文字描述
-  - 市場日期
-  - 情感表情符號
+  - 情感分析分數 (0-100 分制)
+  - 情緒分類統計 (正面/中性/負面)
+  - 市場情感標籤 (恐懼/貪婪等)
+  - 市場情感摘要
+  - HTML 格式郵件報告
+  - 即時情緒指數顯示
+  - 情緒等級分類 (極度恐慌到極度貪婪)
+  - 資料來源說明 (NewsAPI, FinBERT, GPT-4o MINI)
+  - 情緒統計分析 (positive/neutral/negative 計數)
 
 ### 3. 技術指標分析
 
@@ -152,8 +165,10 @@ python main.py
 - **波動率分析**: 5日波動率
 - **價格趨勢**: 價格與移動平均線的關係
 - **交叉信號**: 黃金交叉和死亡交叉檢測
-- **轉折點**: MA90 概念
+- **轉折點分析**: 基於前三個月最高價與最低價的平均值
 - **市場狀態判斷**: 基於時間的市場開放狀態
+- **可切換顯示**: 支援 MA5, MA20, MA125, 轉折點的開關控制
+- **即時更新**: 技術指標隨價格數據即時更新
 
 ### 4. 郵件發送系統
 
@@ -167,6 +182,9 @@ python main.py
   - N8N webhook 整合
   - 情感分析表情符號
   - 郵件優先級設定
+  - 市場數據預覽
+  - 表單驗證
+  - 自動刷新市場數據
 
 ## 🔧 API 接口
 
@@ -221,7 +239,7 @@ GET /health
       "ma_20": [...]
     },
     "ma_125_line": [...],
-    "quarterly_average_line": [...],
+    "pivot_points": [...],
     "cross_signal": {
       "golden_cross": false,
       "death_cross": false,
@@ -242,13 +260,13 @@ GET /health
 #### N8N 數據格式
 ```json
 {
-  "average_sentiment_score": -0.17,
-  "message_content": "今日市場概述...",
-  "market_date": "2025年01月22日",
-  "confidence_level": "較低",
-  "trend_direction": "溫和看跌",
-  "risk_assessment": "低風險",
-  "email_report": "詳細的郵件報告內容..."
+  "positive": 10,
+  "neutral": 8,
+  "negative": 10,
+  "summary": "今日市場....",
+  "score": 47,
+  "label": "恐懼",
+  "emailReportHtml": html格式
 }
 ```
 
@@ -260,7 +278,7 @@ GET /health
   "subject": "市場分析報告",
   "priority": "normal",
   "mail_type": "daily",
-  "custom_message": "請查看附件",
+  "emailReportHtml": html格式,
   "include_charts": true,
   "include_recommendations": true,
   "include_risk_warning": false

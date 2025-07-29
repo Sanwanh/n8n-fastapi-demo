@@ -80,18 +80,19 @@ CONFIG = load_config()
 
 # 資料模型
 class N8NDataExtended(BaseModel):
-    average_sentiment_score: float
-    message_content: str
-    market_date: Optional[str] = None
-    confidence_level: Optional[str] = None
-    trend_direction: Optional[str] = None
-    risk_assessment: Optional[str] = None
+    positive: int
+    neutral: int
+    negative: int
+    summary: str
+    score: int
+    label: str
+    emailReportHtml: str
 
     @field_validator('average_sentiment_score')
     @classmethod
-    def validate_sentiment_score(cls, v):
-        if not -1.0 <= v <= 1.0:
-            raise ValueError('情感分數必須在 -1.0 到 1.0 之間')
+    def validate_score(cls, v):
+        if not 0 <= v <= 100:
+            raise ValueError('情感分數必須在 0 到 100 之間')
         return v
 
 
@@ -236,12 +237,13 @@ async def receive_n8n_data(request: Request):
             logger.info(f"📧 直接找到emailReport內容，長度: {len(email_report)} 字元")
 
         stored_data = {
-            "average_sentiment_score": float(market_data.get("average_sentiment_score", 0)),
-            "message_content": str(market_data.get("message_content", "")),
-            "market_date": str(market_data.get("market_date", current_time.strftime("%Y年%m月%d日"))),
-            "confidence_level": str(market_data.get("confidence_level", "未知")),
-            "trend_direction": str(market_data.get("trend_direction", "未知")),
-            "risk_assessment": str(market_data.get("risk_assessment", "未知")),
+            "positive": int(market_data.get("positive", 0)),
+            "neutral": int(market_data.get("neutral", 0)),
+            "negative": int(market_data.get("negative", 0)),
+            "summary": str(market_data.get("summary", "")),
+            "score": int(market_data.get("score", 0)),
+            "label": str(market_data.get("label", "")),
+            "emailReportHtml": str(market_data.get("emailReportHtml", "")),
             "received_time": current_time.strftime("%Y-%m-%d %H:%M:%S"),
             "received_timestamp": current_time.isoformat(),
             "raw_data": market_data,
