@@ -696,6 +696,18 @@ body {
     color: var(--warning);
 }
 
+.pivot-above {
+    color: var(--success);
+}
+
+.pivot-below {
+    color: var(--error);
+}
+
+.pivot-unknown {
+    color: var(--text-muted);
+}
+
 /* 技術指標 */
 .technical-indicators {
     padding: 2rem;
