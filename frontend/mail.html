@@ -408,11 +408,11 @@
         }
 
         function getSentimentText(score) {
-            if (score >= 76) return '極度貪婪';
-            if (score >= 51) return '貪婪';
-            if (score === 50) return '中立';
-            if (score >= 26) return '恐懼';
-            return '極度恐懼';
+            if (score >= 76) return 'Extreme Greed（極度樂觀）';
+            if (score >= 51) return 'Greed（樂觀）';
+            if (score === 50) return 'Neutral（中立）';
+            if (score >= 26) return 'Fear（悲觀）';
+            return 'Extreme Fear（極度悲觀）';
         }
 
         function getSentimentEmoji(score) {

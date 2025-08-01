@@ -279,12 +279,12 @@
 
                             <div class="accordion-item" id="gold-price-accordion">
                                 <div class="accordion-header" onclick="toggleAccordion('gold-price-accordion')">
-                                    <span><i class="fas fa-coins"></i> 黃金價格詳情</span>
+                                    <span><i class="fas fa-coins"></i> 黃金期貨價格詳情</span>
                                     <i class="fas fa-plus accordion-icon"></i>
                                 </div>
                                 <div class="accordion-content" id="gold-price-content">
                                     <div class="accordion-placeholder">
-                                        <span>點擊上方按鈕或使用"顯示詳情"查看黃金價格詳情</span>
+                                        <span>點擊上方按鈕或使用"顯示詳情"查看黃金期貨價格詳情</span>
                                     </div>
                                 </div>
                             </div>
@@ -1656,11 +1656,11 @@
         }
 
         function getSentimentText(score) {
-            if (score >= 76) return '極度貪婪';
-            if (score >= 51) return '貪婪';
-            if (score === 50) return '中立';
-            if (score >= 26) return '恐懼';
-            return '極度恐懼';
+            if (score >= 76) return 'Extreme Greed（極度樂觀）';
+            if (score >= 51) return 'Greed（樂觀）';
+            if (score === 50) return 'Neutral（中立）';
+            if (score >= 26) return 'Fear（悲觀）';
+            return 'Extreme Fear（極度悲觀）';
         }
 
         function getSentimentEmoji(score) {
