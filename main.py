@@ -70,8 +70,8 @@ def load_config():
         },
         'SYSTEM_INFO': {
             'name': 'Market Analysis API',
-            'version': '2.1.5',
-            'description': '智能市場分析API服務'
+            'version': '2.2.0',
+            'description': '智能市場分析API服務 - 修正RSI和MA50顯示問題'
         }
     }
 
@@ -746,38 +746,114 @@ def calculate_technical_indicators_enhanced(hist_data):
 
     try:
         close_prices = hist_data['Close'].dropna()
+        
+        if len(close_prices) < 20:
+            logger.warning("⚠️ 數據不足20天，無法計算完整技術指標")
+            return technical_indicators
 
-        # MA5 計算
-        if len(close_prices) >= 5:
-            ma_5 = close_prices.rolling(window=5).mean().iloc[-1]
-            if not pd.isna(ma_5):
-                technical_indicators["ma_5"] = float(ma_5)
-
-        # MA20 計算
-        if len(close_prices) >= 20:
-            ma_20 = close_prices.rolling(window=20).mean().iloc[-1]
-            if not pd.isna(ma_20):
-                technical_indicators["ma_20"] = float(ma_20)
-
-        # MA50 計算
-        if len(close_prices) >= 50:
-            ma_50 = close_prices.rolling(window=50).mean().iloc[-1]
-            if not pd.isna(ma_50):
-                technical_indicators["ma_50"] = float(ma_50)
-
-        # RSI 計算
-        if len(close_prices) >= 14:
-            rsi = calculate_rsi(close_prices.values)
-            if rsi is not None:
-                technical_indicators["rsi"] = rsi
-
-        # 額外技術指標
-        if len(close_prices) >= 5:
-            technical_indicators["volatility_5d"] = float(close_prices.tail(5).std())
-
-        if len(close_prices) >= 20 and "ma_20" in technical_indicators:
-            technical_indicators["price_vs_ma20"] = float(
-                (close_prices.iloc[-1] / technical_indicators["ma_20"] - 1) * 100)
+        # 計算移動平均線
+        ma_5_data = close_prices.rolling(window=5).mean()
+        ma_20_data = close_prices.rolling(window=20).mean()
+        ma_50_data = close_prices.rolling(window=50).mean()
+        
+        # 當前值
+        current_ma5 = float(ma_5_data.iloc[-1])
+        current_ma20 = float(ma_20_data.iloc[-1])
+        current_ma50 = float(ma_50_data.iloc[-1]) if not pd.isna(ma_50_data.iloc[-1]) else None
+        current_price = float(close_prices.iloc[-1])
+        
+        # 前一天值
+        prev_ma5 = float(ma_5_data.iloc[-2]) if len(ma_5_data) > 1 else current_ma5
+        prev_ma20 = float(ma_20_data.iloc[-2]) if len(ma_20_data) > 1 else current_ma20
+        prev_ma50 = float(ma_50_data.iloc[-2]) if len(ma_50_data) > 1 and not pd.isna(ma_50_data.iloc[-2]) else current_ma50
+        
+        # MA5 趨勢箭頭
+        ma5_trend = "↑" if current_ma5 > prev_ma5 else "↓" if current_ma5 < prev_ma5 else "="
+        
+        # MA20 趨勢箭頭
+        ma20_trend = "↑" if current_ma20 > prev_ma20 else "↓" if current_ma20 < prev_ma20 else "="
+        
+        # MA50 趨勢箭頭
+        ma50_trend = "↑" if current_ma50 and prev_ma50 and current_ma50 > prev_ma50 else "↓" if current_ma50 and prev_ma50 and current_ma50 < prev_ma50 else "=" if current_ma50 else ""
+        
+        # MA5 與 MA20 相對關係
+        ma_relation = "MA5 > MA20" if current_ma5 > current_ma20 else "MA5 < MA20"
+        
+        # 黃金交叉和死亡交叉檢測
+        golden_cross = (prev_ma5 <= prev_ma20) and (current_ma5 > current_ma20) and (current_price > current_ma20)
+        death_cross = (prev_ma5 >= prev_ma20) and (current_ma5 < current_ma20) and (current_price < current_ma20)
+        
+        # 交叉狀態
+        if golden_cross:
+            cross_status = "golden_cross"
+            cross_message = "🟢 黃金交叉"
+        elif death_cross:
+            cross_status = "death_cross"
+            cross_message = "🔴 死亡交叉"
+        else:
+            cross_status = "normal"
+            cross_message = "⚪ 正常"
+        
+        # RSI14 計算
+        rsi14 = calculate_rsi(close_prices.values, periods=14)
+        prev_rsi14 = calculate_rsi(close_prices.values[:-1], periods=14) if len(close_prices) > 14 else rsi14
+        rsi14_trend = "↑" if rsi14 and prev_rsi14 and rsi14 > prev_rsi14 else "↓" if rsi14 and prev_rsi14 and rsi14 < prev_rsi14 else "=" if rsi14 else ""
+        
+        # 乖離率計算
+        ma5_deviation = ((current_price - current_ma5) / current_ma5) * 100
+        ma20_deviation = ((current_price - current_ma20) / current_ma20) * 100
+        
+        # 前一天乖離率
+        prev_price = float(close_prices.iloc[-2]) if len(close_prices) > 1 else current_price
+        prev_ma5_deviation = ((prev_price - prev_ma5) / prev_ma5) * 100 if prev_ma5 != 0 else 0
+        prev_ma20_deviation = ((prev_price - prev_ma20) / prev_ma20) * 100 if prev_ma20 != 0 else 0
+        
+        # 乖離率趨勢箭頭
+        ma5_deviation_trend = "↑" if ma5_deviation > prev_ma5_deviation else "↓" if ma5_deviation < prev_ma5_deviation else "="
+        ma20_deviation_trend = "↑" if ma20_deviation > prev_ma20_deviation else "↓" if ma20_deviation < prev_ma20_deviation else "="
+        
+        # 乖離率方向判斷
+        ma5_direction = "多頭" if ma5_deviation > 0 else "空頭"
+        ma20_direction = "多頭" if ma20_deviation > 0 else "空頭"
+        
+        # 過熱判斷（±10%）
+        ma5_overheated = abs(ma5_deviation) > 10
+        ma20_overheated = abs(ma20_deviation) > 10
+        
+        # 180日平均乖離率（簡化計算）
+        if len(close_prices) >= 180:
+            ma5_180_avg = close_prices.tail(180).rolling(window=5).mean()
+            ma20_180_avg = close_prices.tail(180).rolling(window=20).mean()
+            avg_ma5_deviation = ((close_prices.tail(180) - ma5_180_avg) / ma5_180_avg * 100).mean()
+            avg_ma20_deviation = ((close_prices.tail(180) - ma20_180_avg) / ma20_180_avg * 100).mean()
+        else:
+            avg_ma5_deviation = 0
+            avg_ma20_deviation = 0
+        
+        # 構建技術指標
+        technical_indicators.update({
+            "ma_5": current_ma5,
+            "ma_5_trend": ma5_trend,
+            "ma_20": current_ma20,
+            "ma_20_trend": ma20_trend,
+            "ma_50": current_ma50,
+            "ma_50_trend": ma50_trend,
+            "ma_relation": ma_relation,
+            "cross_status": cross_status,
+            "cross_message": cross_message,
+            "rsi14": rsi14,
+            "rsi14_trend": rsi14_trend,
+            "ma5_deviation": round(ma5_deviation, 2),
+            "ma5_deviation_trend": ma5_deviation_trend,
+            "ma5_direction": ma5_direction,
+            "ma5_overheated": ma5_overheated,
+            "ma20_deviation": round(ma20_deviation, 2),
+            "ma20_deviation_trend": ma20_deviation_trend,
+            "ma20_direction": ma20_direction,
+            "ma20_overheated": ma20_overheated,
+            "avg_ma5_deviation": round(avg_ma5_deviation, 2),
+            "avg_ma20_deviation": round(avg_ma20_deviation, 2)
+        })
 
     except Exception as e:
         logger.warning(f"⚠️ 技術指標計算錯誤: {e}")
@@ -789,34 +865,52 @@ def calculate_rsi(prices, periods=14):
     """計算 RSI 技術指標"""
     try:
         if len(prices) < periods + 1:
+            logger.warning(f"⚠️ RSI計算：數據不足，需要{periods + 1}個數據點，實際只有{len(prices)}個")
             return None
 
+        # 轉換為numpy數組並處理NaN值
         prices = np.array(prices, dtype=float)
-        prices = prices[~np.isnan(prices)]
+        valid_prices = prices[~np.isnan(prices)]
 
-        if len(prices) < periods + 1:
+        if len(valid_prices) < periods + 1:
+            logger.warning(f"⚠️ RSI計算：有效數據不足，需要{periods + 1}個數據點，實際只有{len(valid_prices)}個")
             return None
 
-        deltas = np.diff(prices)
+        # 計算價格變化
+        deltas = np.diff(valid_prices)
 
         if len(deltas) < periods:
+            logger.warning(f"⚠️ RSI計算：價格變化數據不足，需要{periods}個數據點，實際只有{len(deltas)}個")
             return None
 
+        # 分離上漲和下跌
         up_moves = np.where(deltas > 0, deltas, 0)
         down_moves = np.where(deltas < 0, -deltas, 0)
 
+        # 計算最近periods期的平均上漲和下跌
         if len(up_moves) >= periods and len(down_moves) >= periods:
             avg_up = np.mean(up_moves[-periods:])
             avg_down = np.mean(down_moves[-periods:])
 
+            # 處理除零情況
             if avg_down == 0:
-                return 100.0
+                if avg_up == 0:
+                    return 50.0  # 如果沒有變化，返回中性值
+                else:
+                    return 100.0  # 只有上漲，返回最大值
 
+            # 計算相對強弱比和RSI
             rs = avg_up / avg_down
             rsi = 100 - (100 / (1 + rs))
+            
+            # 確保結果在有效範圍內
+            rsi = max(0, min(100, rsi))
+            
+            logger.info(f"✅ RSI計算成功：{rsi:.1f} (periods={periods})")
             return round(float(rsi), 1)
-
-        return None
+        else:
+            logger.warning(f"⚠️ RSI計算：數據點不足，up_moves={len(up_moves)}, down_moves={len(down_moves)}, 需要{periods}")
+            return None
 
     except Exception as e:
         logger.warning(f"⚠️ RSI 計算錯誤: {e}")
@@ -889,12 +983,31 @@ def calculate_quarterly_average_line(hist_data):
                 # 如果當月沒有交易數據，使用月初日期
                 point_date = current_month.to_timestamp().strftime('%Y-%m-%d')
 
+            # 獲取當日價格進行比較
+            current_price = None
+            try:
+                # 嘗試獲取轉折點日期當天的價格
+                pivot_date = pd.to_datetime(point_date)
+                if pivot_date in hist_data.index:
+                    current_price = float(hist_data.loc[pivot_date, 'Close'])
+                else:
+                    # 如果沒有當天數據，使用最近的價格
+                    current_price = float(hist_data['Close'].iloc[-1])
+            except Exception as e:
+                logger.warning(f"⚠️ 獲取轉折點當日價格失敗: {e}")
+                current_price = float(hist_data['Close'].iloc[-1])
+            
+            # 判斷價格關係
+            price_status = "bullish" if current_price > pivot else "bearish" if current_price < pivot else "neutral"
+            
             points.append({
                 'time': point_date,
                 'price': float(pivot),
                 'high': float(high),
                 'low': float(low),
-                'range': f"{prev3_months[0]}~{prev3_months[-1]}"
+                'range': f"{prev3_months[0]}~{prev3_months[-1]}",
+                'current_price': current_price,
+                'price_status': price_status
             })
 
         # 按時間排序確保折線圖正確連接
@@ -953,7 +1066,7 @@ def calculate_ma125_line(hist_data):
 
 
 def detect_golden_death_cross(hist_data):
-    """檢測黃金交叉和死亡交叉 - 使用MA20穿越MA5"""
+    """檢測黃金交叉和死亡交叉 - 使用MA5穿越MA20（已整合到技術指標中）"""
     try:
         if len(hist_data) < 20:
             return {"golden_cross": False, "death_cross": False, "message": "", "status": "normal"}
@@ -962,37 +1075,29 @@ def detect_golden_death_cross(hist_data):
         ma_20 = hist_data['Close'].rolling(window=20).mean()
         ma_5 = hist_data['Close'].rolling(window=5).mean()
 
-        # 獲取最近幾個數據點進行比較
-        recent_data = hist_data.tail(10)
-        recent_ma20 = ma_20.tail(10)
-        recent_ma5 = ma_5.tail(10)
+        # 獲取最新和前一天的數據
+        current_ma20 = float(ma_20.iloc[-1])
+        current_ma5 = float(ma_5.iloc[-1])
+        prev_ma20 = float(ma_20.iloc[-2]) if len(ma_20) > 1 else current_ma20
+        prev_ma5 = float(ma_5.iloc[-2]) if len(ma_5) > 1 else current_ma5
+        current_price = float(hist_data['Close'].iloc[-1])
 
-        # 檢查是否有足夠的數據
-        if recent_ma20.isna().all() or recent_ma5.isna().all():
-            return {"golden_cross": False, "death_cross": False, "message": "", "status": "normal"}
+        # 檢測黃金交叉（MA5從下方穿越MA20，且收盤價高於MA20）
+        golden_cross = bool((prev_ma5 <= prev_ma20) and (current_ma5 > current_ma20) and (current_price > current_ma20))
 
-        # 獲取最新的MA值，確保轉換為Python原生類型
-        current_ma20 = float(recent_ma20.iloc[-1])
-        current_ma5 = float(recent_ma5.iloc[-1])
-        prev_ma20 = float(recent_ma20.iloc[-2]) if len(recent_ma20) > 1 else current_ma20
-        prev_ma5 = float(recent_ma5.iloc[-2]) if len(recent_ma5) > 1 else current_ma5
-
-        # 檢測黃金交叉（MA20從下方穿越MA5）
-        golden_cross = bool((prev_ma20 < prev_ma5) and (current_ma20 > current_ma5))
-
-        # 檢測死亡交叉（MA20從上方穿越MA5）
-        death_cross = bool((prev_ma20 > prev_ma5) and (current_ma20 < current_ma5))
+        # 檢測死亡交叉（MA5從上方穿越MA20，且收盤價低於MA20）
+        death_cross = bool((prev_ma5 >= prev_ma20) and (current_ma5 < current_ma20) and (current_price < current_ma20))
 
         message = ""
         status = "normal"
         if golden_cross:
-            message = "🟢 黃金交叉：MA20穿越MA5向上，看漲信號"
+            message = "🟢 黃金交叉：MA5穿越MA20向上，看漲信號"
             status = "golden_cross"
         elif death_cross:
-            message = "🔴 死亡交叉：MA20穿越MA5向下，看跌信號"
+            message = "🔴 死亡交叉：MA5穿越MA20向下，看跌信號"
             status = "death_cross"
         else:
-            message = "⚪ 正常：MA20與MA5無交叉信號"
+            message = "⚪ 正常：MA5與MA20無交叉信號"
             status = "normal"
 
         return {

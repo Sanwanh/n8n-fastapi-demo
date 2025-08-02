@@ -282,7 +282,7 @@
                         </div>
                         <div class="summary-item">
                             <span class="summary-label">分析日期:</span>
-                            <span class="summary-value">${data.market_date || '今日'}</span>
+                            <span class="summary-value">${getMarketDate(data)}</span>
                         </div>
                         <div class="summary-item">
                             <span class="summary-label">接收時間:</span>
@@ -358,6 +358,27 @@
         }
 
         // 輔助函數
+        function getMarketDate(data) {
+            // 優先使用 market_date
+            if (data.market_date) {
+                return data.market_date;
+            }
+
+            // 如果沒有 market_date，使用 received_time 的日期部分
+            if (data.received_time) {
+                try {
+                    // 解析 received_time 格式 "YYYY-MM-DD HH:MM:SS"
+                    const datePart = data.received_time.split(' ')[0];
+                    return datePart;
+                } catch (e) {
+                    console.warn('解析 received_time 失敗:', e);
+                }
+            }
+
+            // 如果都沒有，使用當前日期
+            return new Date().toLocaleDateString('zh-TW');
+        }
+
         function updateStatus(status, text) {
             const dot = document.querySelector('#status-indicator .indicator-dot');
             const textElement = document.querySelector('#status-indicator .indicator-text');

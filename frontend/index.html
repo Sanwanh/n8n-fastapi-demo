@@ -171,21 +171,51 @@
                         <div class="technical-indicators" id="technical-indicators" style="display: block;">
                             <h3><i class="fas fa-chart-line"></i> 技術指標</h3>
                             <div class="indicators-grid">
-                                <div class="indicator-item">
+                                <div class="indicator-item" title="5日移動平均線 - 短期趨勢指標">
                                     <span class="indicator-label">MA5</span>
                                     <span class="indicator-value" id="ma5-value">--</span>
                                 </div>
-                                <div class="indicator-item">
+                                <div class="indicator-item" title="20日移動平均線 - 中期趨勢指標">
                                     <span class="indicator-label">MA20</span>
                                     <span class="indicator-value" id="ma20-value">--</span>
                                 </div>
-                                <div class="indicator-item">
+                                <div class="indicator-item" title="50日移動平均線 - 長期趨勢指標">
                                     <span class="indicator-label">MA50</span>
                                     <span class="indicator-value" id="ma50-value">--</span>
                                 </div>
-                                <div class="indicator-item">
-                                    <span class="indicator-label">RSI</span>
+                                <div class="indicator-item" title="14日相對強弱指數 - 超買超賣指標">
+                                    <span class="indicator-label">RSI14</span>
                                     <span class="indicator-value" id="rsi-value">--</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 乖離率分析 -->
+                        <div class="deviation-analysis" id="deviation-analysis" style="display: block;">
+                            <h3 style="margin-bottom: 1.2em;"><i class="fas fa-percentage"></i> 乖離率分析</h3>
+                            <div class="deviation-grid" style="gap: 1.2em;">
+                                <div class="deviation-item" id="ma5-deviation" style="margin-bottom: 1em;"
+                                    title="當前價格相對於MA5的偏離百分比">
+                                    <div class="deviation-header" style="margin-bottom: 0.4em;">
+                                        <span class="deviation-label" style="margin-right: 0.6em;">MA5 乖離率</span>
+                                        <span class="deviation-value" id="ma5-deviation-value">--</span>
+                                    </div>
+                                    <div class="deviation-description" id="ma5-deviation-description"
+                                        style="color: var(--text-muted);">
+                                        當前價格相對於 MA5 的偏離程度
+                                    </div>
+                                </div>
+
+                                <div class="deviation-item" id="ma20-deviation" style="margin-bottom: 1em;"
+                                    title="當前價格相對於MA20的偏離百分比">
+                                    <div class="deviation-header" style="margin-bottom: 0.4em;">
+                                        <span class="deviation-label" style="margin-right: 0.6em;">MA20 乖離率</span>
+                                        <span class="deviation-value" id="ma20-deviation-value">--</span>
+                                    </div>
+                                    <div class="deviation-description" id="ma20-deviation-description"
+                                        style="color: var(--text-muted);">
+                                        當前價格相對於 MA20 的偏離程度
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -194,7 +224,8 @@
                         <div class="enhanced-signal-display" id="enhanced-signal-display" style="display: block;">
                             <h3 style="margin-bottom: 1.2em;"><i class="fas fa-signal"></i> 交易訊號監測</h3>
                             <div class="signal-grid" style="gap: 1.2em;">
-                                <div class="signal-item" id="ma-cross-signal" style="margin-bottom: 1em;">
+                                <div class="signal-item" id="ma-cross-signal" style="margin-bottom: 1em;"
+                                    title="MA5與MA20的交叉信號檢測">
                                     <div class="signal-header" style="margin-bottom: 0.4em;">
                                         <span class="signal-label" style="margin-right: 0.6em;">MA5/MA20 交叉</span>
                                         <span class="signal-status" id="ma-cross-status">--</span>
@@ -205,14 +236,15 @@
                                     </div>
                                 </div>
 
-                                <div class="signal-item" id="rsi-signal" style="margin-bottom: 1em;">
+                                <div class="signal-item" id="rsi-signal" style="margin-bottom: 1em;"
+                                    title="RSI14超買超賣區間檢測">
                                     <div class="signal-header" style="margin-bottom: 0.4em;">
                                         <span class="signal-label" style="margin-right: 0.6em;">RSI 區間</span>
                                         <span class="signal-status" id="rsi-status">--</span>
                                     </div>
                                     <div class="signal-description" id="rsi-description"
                                         style="color: var(--text-muted);">
-                                        RSI &gt; 70 過熱，RSI &lt; 30 過冷
+                                        RSI14 &gt; 70 過熱，RSI14 &lt; 30 過冷
                                     </div>
                                 </div>
 
@@ -352,7 +384,7 @@
                 <div class="footer-stats">
                     <div class="stat-item">
                         <span class="stat-label">系統版本</span>
-                        <span class="stat-value">v2.1.4</span>
+                        <span class="stat-value">v2.2.1</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">數據來源</span>
@@ -637,7 +669,7 @@
                             <i class="fas fa-calendar-day"></i>
                             市場日期
                         </div>
-                        <div class="data-value">${data.market_date || '未知'}</div>
+                        <div class="data-value">${getMarketDate(data)}</div>
                     </div>
 
                     <div class="data-row full-width">
@@ -962,6 +994,16 @@
                     console.log('轉折點對齊數據點數:', alignedPivotPrices.filter(p => p !== null).length);
 
                     if (alignedPivotPrices.filter(p => p !== null).length > 0) {
+                        // 根據價格狀態設置顏色
+                        const getPivotColor = (time) => {
+                            const pivotData = data.pivot_points.find(p => p.time === time);
+                            if (pivotData && pivotData.price_status) {
+                                if (pivotData.price_status === 'bullish') return '#10b981'; // 綠色
+                                if (pivotData.price_status === 'bearish') return '#ef4444'; // 紅色
+                            }
+                            return '#FF8C00'; // 預設橙色
+                        };
+
                         datasets.push({
                             label: '轉折點',
                             data: alignedPivotPrices,
@@ -972,8 +1014,20 @@
                             tension: 0.1, // 減少曲線張力，讓線更直
                             pointRadius: 2, // 縮小點的大小
                             pointHoverRadius: 4, // 縮小懸停時點的大小
-                            pointBackgroundColor: '#FF8C00',
-                            pointBorderColor: '#FF8C00',
+                            pointBackgroundColor: alignedPivotPrices.map((price, index) => {
+                                if (price !== null) {
+                                    const time = validLabels[index];
+                                    return getPivotColor(time);
+                                }
+                                return '#FF8C00';
+                            }),
+                            pointBorderColor: alignedPivotPrices.map((price, index) => {
+                                if (price !== null) {
+                                    const time = validLabels[index];
+                                    return getPivotColor(time);
+                                }
+                                return '#FF8C00';
+                            }),
                             borderDash: [0], // 實線
                             spanGaps: true, // 允許跨越空值，讓線條連續
                             pointHitRadius: 8, // 增加點擊區域，方便交互
@@ -993,12 +1047,11 @@
                 console.log('data.pivot_points 長度:', data.pivot_points?.length);
             }
 
-            // 檢查交叉信號
+            // 檢查交叉信號（從技術指標中獲取）
             let crossSignalText = '';
-            if (data.cross_signal) {
-                crossSignalText = data.cross_signal.message;
-                console.log('📊 交叉信號:', data.cross_signal);
-                console.log('📊 信號狀態:', data.cross_signal.status);
+            if (data.technical_indicators && data.technical_indicators.cross_message) {
+                crossSignalText = data.technical_indicators.cross_message;
+                console.log('📊 交叉信號:', data.technical_indicators.cross_status);
                 console.log('📊 信號消息:', crossSignalText);
             }
 
@@ -1185,24 +1238,61 @@
         function updateTechnicalIndicators(indicators) {
             console.log('📊 更新技術指標:', indicators);
 
+            // 趨勢箭頭樣式函數
+            const getTrendStyle = (trend) => {
+                if (trend === "↑") return "color: #10b981; font-weight: bold;";
+                if (trend === "↓") return "color: #ef4444; font-weight: bold;";
+                return "color: #6b7280; font-weight: bold;";
+            };
+
+            // 更新 MA5 顯示（包含趨勢箭頭）
             if (indicators.ma_5) {
-                document.getElementById('ma5-value').textContent = '$' + indicators.ma_5.toFixed(2);
+                const ma5Element = document.getElementById('ma5-value');
+                const trend = indicators.ma_5_trend || '-';
+                ma5Element.innerHTML = `$${indicators.ma_5.toFixed(2)} <span style="${getTrendStyle(trend)}">${trend}</span>`;
             }
+
+            // 更新 MA20 顯示（包含趨勢箭頭）
             if (indicators.ma_20) {
-                document.getElementById('ma20-value').textContent = '$' + indicators.ma_20.toFixed(2);
+                const ma20Element = document.getElementById('ma20-value');
+                const trend = indicators.ma_20_trend || '-';
+                ma20Element.innerHTML = `$${indicators.ma_20.toFixed(2)} <span style="${getTrendStyle(trend)}">${trend}</span>`;
             }
+
+            // 更新 MA50 顯示（包含趨勢箭頭）
             if (indicators.ma_50) {
-                document.getElementById('ma50-value').textContent = '$' + indicators.ma_50.toFixed(2);
+                const ma50Element = document.getElementById('ma50-value');
+                const trend = indicators.ma_50_trend || '-';
+                ma50Element.innerHTML = `$${indicators.ma_50.toFixed(2)} <span style="${getTrendStyle(trend)}">${trend}</span>`;
             }
-            if (indicators.rsi) {
+
+            // 更新 RSI14 顯示（修正為 rsi14）
+            if (indicators.rsi14) {
                 const rsiElement = document.getElementById('rsi-value');
-                rsiElement.textContent = indicators.rsi.toFixed(1);
+                const rsi = indicators.rsi14;
+                let trendArrow = '';
+
+                // RSI 趨勢箭頭邏輯 - 只有在極端值時才顯示箭頭
+                if (rsi > 80) {
+                    trendArrow = '↓'; // 極度過熱，向下趨勢
+                } else if (rsi < 20) {
+                    trendArrow = '↑'; // 極度過冷，向上趨勢
+                } else {
+                    // 20-80 正常區間，顯示平
+                    trendArrow = '-';
+                }
+
+                rsiElement.innerHTML = `${rsi.toFixed(1)} <span style="${getTrendStyle(trendArrow)}">${trendArrow}</span>`;
 
                 // RSI 顏色指示
                 rsiElement.className = 'indicator-value';
-                if (indicators.rsi > 70) {
+                if (rsi > 80) {
                     rsiElement.classList.add('rsi-overbought');
-                } else if (indicators.rsi < 30) {
+                } else if (rsi > 70) {
+                    rsiElement.classList.add('rsi-overbought');
+                } else if (rsi < 20) {
+                    rsiElement.classList.add('rsi-oversold');
+                } else if (rsi < 30) {
                     rsiElement.classList.add('rsi-oversold');
                 } else {
                     rsiElement.classList.add('rsi-neutral');
@@ -1220,33 +1310,46 @@
             // RSI 區間信號
             updateRSISignal(goldData);
 
-
+            // 乖離率分析
+            updateDeviationAnalysis(goldData);
         }
 
         function updateMACrossSignal(goldData) {
             const statusElement = document.getElementById('ma-cross-status');
             const descriptionElement = document.getElementById('ma-cross-description');
 
-            if (goldData.cross_signal && goldData.cross_signal.status) {
+            if (goldData.technical_indicators) {
+                const indicators = goldData.technical_indicators;
                 let statusText = '';
                 let statusClass = '';
                 let description = '';
 
-                switch (goldData.cross_signal.status) {
-                    case 'golden_cross':
-                        statusText = '✅ 黃金交叉';
-                        statusClass = 'signal-success';
-                        description = 'MA5 上穿 MA20，看漲信號';
-                        break;
-                    case 'death_cross':
-                        statusText = '⚠️ 死亡交叉';
-                        statusClass = 'signal-warning';
-                        description = 'MA5 下穿 MA20，看跌信號';
-                        break;
-                    default:
-                        statusText = '✅ 正常';
+                // 顯示 MA5 與 MA20 的相對關係（使用運算符號）
+                if (indicators.ma_relation) {
+                    // 將文字轉換為運算符號
+                    const relation = indicators.ma_relation.replace('MA5 > MA20', 'MA5 > MA20')
+                        .replace('MA5 < MA20', 'MA5 < MA20')
+                        .replace('MA5 = MA20', 'MA5 = MA20');
+                    statusText = relation;
+                    statusClass = 'signal-normal';
+                }
+
+                // 檢查交叉狀態
+                if (indicators.cross_status === 'golden_cross') {
+                    statusText = '🟢 黃金交叉';
+                    statusClass = 'signal-success';
+                    description = indicators.cross_message || 'MA5 上穿 MA20，看漲信號';
+                } else if (indicators.cross_status === 'death_cross') {
+                    statusText = '🔴 死亡交叉';
+                    statusClass = 'signal-warning';
+                    description = indicators.cross_message || 'MA5 下穿 MA20，看跌信號';
+                } else {
+                    // 如果沒有交叉信號，顯示運算符號關係
+                    if (!statusText) {
+                        statusText = '⚪ 正常';
                         statusClass = 'signal-normal';
-                        description = 'MA5 與 MA20 無交叉信號';
+                        description = indicators.cross_message || 'MA5 與 MA20 無交叉信號';
+                    }
                 }
 
                 statusElement.textContent = statusText;
@@ -1259,29 +1362,86 @@
             const statusElement = document.getElementById('rsi-status');
             const descriptionElement = document.getElementById('rsi-description');
 
-            if (goldData.technical_indicators && goldData.technical_indicators.rsi) {
-                const rsi = goldData.technical_indicators.rsi;
+            if (goldData.technical_indicators && goldData.technical_indicators.rsi14) {
+                const rsi = goldData.technical_indicators.rsi14;
                 let statusText = '';
                 let statusClass = '';
                 let description = '';
 
-                if (rsi > 70) {
+                if (rsi > 80) {
+                    statusText = '🔴 極度過熱';
+                    statusClass = 'signal-warning';
+                    description = `RSI14: ${rsi.toFixed(1)} > 80，極度過熱，強烈回調風險`;
+                } else if (rsi > 70) {
                     statusText = '⚠️ 過熱';
                     statusClass = 'signal-warning';
-                    description = `RSI: ${rsi.toFixed(1)} > 70，市場可能過熱，注意回調風險`;
+                    description = `RSI14: ${rsi.toFixed(1)} > 70，市場過熱，注意回調風險`;
+                } else if (rsi < 20) {
+                    statusText = '🔴 極度過冷';
+                    statusClass = 'signal-warning';
+                    description = `RSI14: ${rsi.toFixed(1)} < 20，極度過冷，強烈反彈機會`;
                 } else if (rsi < 30) {
                     statusText = '⚠️ 過冷';
                     statusClass = 'signal-warning';
-                    description = `RSI: ${rsi.toFixed(1)} < 30，市場可能過冷，注意反彈機會`;
+                    description = `RSI14: ${rsi.toFixed(1)} < 30，市場過冷，注意反彈機會`;
                 } else {
                     statusText = '✅ 正常';
                     statusClass = 'signal-success';
-                    description = `RSI: ${rsi.toFixed(1)}，市場處於正常區間`;
+                    description = `RSI14: ${rsi.toFixed(1)}，市場處於正常區間 (20-80)`;
                 }
 
                 statusElement.textContent = statusText;
                 statusElement.className = `signal-status ${statusClass}`;
                 descriptionElement.textContent = description;
+            }
+        }
+
+        function updateDeviationAnalysis(goldData) {
+            if (!goldData.technical_indicators) return;
+
+            const indicators = goldData.technical_indicators;
+
+            // 趨勢箭頭樣式
+            const getTrendStyle = (trend) => {
+                if (trend === "↑") return "color: #10b981; font-weight: bold;";
+                if (trend === "↓") return "color: #ef4444; font-weight: bold;";
+                return "color: #6b7280; font-weight: bold;";
+            };
+
+            // 乖離率樣式
+            const getDeviationStyle = (deviation, overheated) => {
+                if (overheated) return "color: #f59e0b; font-weight: bold;";
+                if (deviation > 0) return "color: #10b981;";
+                if (deviation < 0) return "color: #ef4444;";
+                return "color: #6b7280;";
+            };
+
+            // 更新 MA5 乖離率
+            if (indicators.ma5_deviation !== undefined) {
+                const ma5DeviationElement = document.getElementById('ma5-deviation-value');
+                const ma5DeviationDescElement = document.getElementById('ma5-deviation-description');
+
+                const deviation = indicators.ma5_deviation;
+                const trend = indicators.ma5_deviation_trend || '-';
+                const direction = indicators.ma5_direction || '';
+                const overheated = indicators.ma5_overheated;
+
+                ma5DeviationElement.innerHTML = `<span style="${getDeviationStyle(deviation, overheated)}">${deviation >= 0 ? '+' : ''}${deviation}%</span> <span style="${getTrendStyle(trend)}">${trend}</span>`;
+                ma5DeviationDescElement.textContent = `${direction}結構 ${overheated ? '(過熱警告)' : ''}`;
+            }
+
+            // 更新 MA20 乖離率
+            if (indicators.ma20_deviation !== undefined) {
+                const ma20DeviationElement = document.getElementById('ma20-deviation-value');
+                const ma20DeviationDescElement = document.getElementById('ma20-deviation-description');
+
+                const deviation = indicators.ma20_deviation;
+                const trend = indicators.ma20_deviation_trend || '-';
+                const direction = indicators.ma20_direction || '';
+                const overheated = indicators.ma20_overheated;
+
+                ma20DeviationElement.innerHTML = `<span style="${getDeviationStyle(deviation, overheated)}">${deviation >= 0 ? '+' : ''}${deviation}%</span> <span style="${getTrendStyle(trend)}">${trend}</span>`;
+                ma20DeviationDescElement.textContent = `${direction}結構 ${overheated ? '(過熱警告)' : ''}`;
             }
         }
 
@@ -1479,7 +1639,7 @@
                     <p><strong>數據來源:</strong> Yahoo Finance</p>
                     <p><strong>API狀態:</strong> <span class="status-success">正常</span></p>
                     <p><strong>下次更新:</strong> ${document.getElementById('next-update').textContent}</p>
-                    <p><strong>系統版本:</strong> v2.1.4</p>
+                    <p><strong>系統版本:</strong> v2.2.1</p>
                 </div>
             `;
         }
@@ -1513,14 +1673,64 @@
             if (!goldPriceData?.technical_indicators) return;
 
             const indicators = goldPriceData.technical_indicators;
+
+            // RSI 趨勢箭頭輔助函數
+            function getRSITrendArrow(rsi) {
+                if (rsi > 80) {
+                    return '↓'; // 極度過熱，向下趨勢
+                } else if (rsi < 20) {
+                    return '↑'; // 極度過冷，向上趨勢
+                } else {
+                    return '-'; // 20-80 正常區間，顯示平
+                }
+            }
+
+            // 趨勢箭頭樣式
+            const getTrendStyle = (trend) => {
+                if (trend === "↑") return "color: #10b981; font-weight: bold;";
+                if (trend === "↓") return "color: #ef4444; font-weight: bold;";
+                return "color: #6b7280; font-weight: bold;";
+            };
+
+            // 交叉狀態樣式
+            const getCrossStyle = (status) => {
+                if (status === "golden_cross") return "color: #10b981; font-weight: bold;";
+                if (status === "death_cross") return "color: #ef4444; font-weight: bold;";
+                return "color: #6b7280;";
+            };
+
+            // 乖離率樣式
+            const getDeviationStyle = (deviation, overheated) => {
+                if (overheated) return "color: #f59e0b; font-weight: bold;";
+                if (deviation > 0) return "color: #10b981;";
+                if (deviation < 0) return "color: #ef4444;";
+                return "color: #6b7280;";
+            };
+
             contentElement.innerHTML = `
                 <div class="log-content">
-                    ${indicators.ma_5 ? `<p><strong>MA5 (5日移動平均):</strong> ${indicators.ma_5.toFixed(2)}</p>` : ''}
-                    ${indicators.ma_20 ? `<p><strong>MA20 (20日移動平均):</strong> ${indicators.ma_20.toFixed(2)}</p>` : ''}
-                    ${indicators.ma_50 ? `<p><strong>MA50 (50日移動平均):</strong> ${indicators.ma_50.toFixed(2)}</p>` : ''}
-                    ${indicators.rsi ? `<p><strong>RSI (相對強弱指標):</strong> ${indicators.rsi.toFixed(1)} ${getRSIStatus(indicators.rsi)}</p>` : ''}
-                    ${indicators.volatility_5d ? `<p><strong>5日波動率:</strong> ${indicators.volatility_5d.toFixed(2)}</p>` : ''}
-                    ${indicators.price_vs_ma20 ? `<p><strong>價格相對MA20:</strong> ${indicators.price_vs_ma20 >= 0 ? '+' : ''}${indicators.price_vs_ma20.toFixed(2)}%</p>` : ''}
+                    <div class="technical-section">
+                        <h4><i class="fas fa-chart-line"></i> 移動平均線</h4>
+                        ${indicators.ma_5 ? `<p><strong>MA5:</strong> ${indicators.ma_5.toFixed(2)} <span style="${getTrendStyle(indicators.ma_5_trend || '-')}">${indicators.ma_5_trend || '-'}</span></p>` : ''}
+                        ${indicators.ma_20 ? `<p><strong>MA20:</strong> ${indicators.ma_20.toFixed(2)} <span style="${getTrendStyle(indicators.ma_20_trend || '-')}">${indicators.ma_20_trend || '-'}</span></p>` : ''}
+                        ${indicators.ma_50 ? `<p><strong>MA50:</strong> ${indicators.ma_50.toFixed(2)} <span style="${getTrendStyle(indicators.ma_50_trend || '-')}">${indicators.ma_50_trend || '-'}</span></p>` : ''}
+                        ${indicators.ma_relation ? `<p><strong>相對關係:</strong> <span style="color: #6b7280;">${indicators.ma_relation}</span></p>` : ''}
+                        ${indicators.cross_message ? `<p><strong>交叉狀態:</strong> <span style="${getCrossStyle(indicators.cross_status)}">${indicators.cross_message}</span></p>` : ''}
+                    </div>
+                    
+                    <div class="technical-section">
+                        <h4><i class="fas fa-chart-area"></i> RSI指標</h4>
+                        ${indicators.rsi14 ? `<p><strong>RSI14:</strong> ${indicators.rsi14.toFixed(1)} <span style="${getTrendStyle(getRSITrendArrow(indicators.rsi14))}">${getRSITrendArrow(indicators.rsi14)}</span> ${getRSIStatus(indicators.rsi14)}</p>` : ''}
+                    </div>
+                    
+                    <div class="technical-section">
+                        <h4><i class="fas fa-percentage"></i> 乖離率分析</h4>
+                        ${indicators.ma5_deviation !== undefined ? `<p><strong>MA5乖離率:</strong> <span style="${getDeviationStyle(indicators.ma5_deviation, indicators.ma5_overheated)}">${indicators.ma5_deviation >= 0 ? '+' : ''}${indicators.ma5_deviation}%</span> <span style="${getTrendStyle(indicators.ma5_deviation_trend || '-')}">${indicators.ma5_deviation_trend || '-'}</span> (${indicators.ma5_direction})</p>` : ''}
+                        ${indicators.ma20_deviation !== undefined ? `<p><strong>MA20乖離率:</strong> <span style="${getDeviationStyle(indicators.ma20_deviation, indicators.ma20_overheated)}">${indicators.ma20_deviation >= 0 ? '+' : ''}${indicators.ma20_deviation}%</span> <span style="${getTrendStyle(indicators.ma20_deviation_trend || '-')}">${indicators.ma20_deviation_trend || '-'}</span> (${indicators.ma20_direction})</p>` : ''}
+                        ${indicators.avg_ma5_deviation !== undefined ? `<p><strong>180日平均MA5乖離率:</strong> ${indicators.avg_ma5_deviation >= 0 ? '+' : ''}${indicators.avg_ma5_deviation}%</p>` : ''}
+                        ${indicators.avg_ma20_deviation !== undefined ? `<p><strong>180日平均MA20乖離率:</strong> ${indicators.avg_ma20_deviation >= 0 ? '+' : ''}${indicators.avg_ma20_deviation}%</p>` : ''}
+                        ${indicators.ma5_overheated || indicators.ma20_overheated ? `<p style="color: #f59e0b; font-weight: bold;"><i class="fas fa-exclamation-triangle"></i> 注意：乖離率超過±10%，可能存在過熱風險</p>` : ''}
+                    </div>
                 </div>
             `;
         }
@@ -1561,7 +1771,7 @@
                         </div>
 
                         <div class="market-details">
-                            <p><strong>市場日期:</strong> ${marketData.market_date || '未知'}</p>
+                            <p><strong>市場日期:</strong> ${getMarketDate(marketData)}</p>
                             <p><strong>接收時間:</strong> ${marketData.received_time || '未知'}</p>
                         </div>
 
@@ -1635,6 +1845,27 @@
         }
 
         // ===== 輔助函數 =====
+        function getMarketDate(data) {
+            // 優先使用 market_date
+            if (data.market_date) {
+                return data.market_date;
+            }
+
+            // 如果沒有 market_date，使用 received_time 的日期部分
+            if (data.received_time) {
+                try {
+                    // 解析 received_time 格式 "YYYY-MM-DD HH:MM:SS"
+                    const datePart = data.received_time.split(' ')[0];
+                    return datePart;
+                } catch (e) {
+                    console.warn('解析 received_time 失敗:', e);
+                }
+            }
+
+            // 如果都沒有，使用當前日期
+            return new Date().toLocaleDateString('zh-TW');
+        }
+
         function getSummaryContent(data) {
             // 從 raw_data 中獲取 summary
             if (data.raw_data && data.raw_data.summary) {
@@ -2507,6 +2738,148 @@
         .email-report-content strong {
             color: var(--text-primary);
             font-weight: 600;
+        }
+
+        /* 技術指標樣式 */
+        .technical-section {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: var(--bg-glass);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        /* Tooltip 樣式 */
+        .indicator-item[title],
+        .signal-item[title],
+        .deviation-item[title] {
+            position: relative;
+            cursor: help;
+        }
+
+        .indicator-item[title]:hover::after,
+        .signal-item[title]:hover::after,
+        .deviation-item[title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            z-index: 1000;
+            pointer-events: none;
+            margin-bottom: 0.5rem;
+        }
+
+        .indicator-item[title]:hover::before,
+        .signal-item[title]:hover::before,
+        .deviation-item[title]:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: rgba(0, 0, 0, 0.9);
+            margin-bottom: -5px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .technical-section h4 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .technical-section p {
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .technical-section strong {
+            min-width: 120px;
+            color: var(--text-secondary);
+        }
+
+        /* 乖離率分析樣式 */
+        .deviation-analysis {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: var(--bg-glass);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        .deviation-analysis h3 {
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .deviation-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .deviation-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        .deviation-label {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .deviation-value {
+            font-weight: bold;
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+        }
+
+        .deviation-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .technical-section p {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.25rem;
+            }
+
+            .technical-section strong {
+                min-width: auto;
+            }
+
+            .deviation-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
         }
     </style>
 </body>
