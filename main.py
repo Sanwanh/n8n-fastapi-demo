@@ -799,36 +799,38 @@ def calculate_technical_indicators_enhanced(hist_data):
         prev_rsi14 = calculate_rsi(close_prices.values[:-1], periods=14) if len(close_prices) > 14 else rsi14
         rsi14_trend = "↑" if rsi14 and prev_rsi14 and rsi14 > prev_rsi14 else "↓" if rsi14 and prev_rsi14 and rsi14 < prev_rsi14 else "=" if rsi14 else ""
         
-        # 乖離率計算
-        ma5_deviation = ((current_price - current_ma5) / current_ma5) * 100
-        ma20_deviation = ((current_price - current_ma20) / current_ma20) * 100
+        # 乖離率計算 - MA5與MA20之間的乖離率
+        # 正確公式: ((current_ma5 - current_ma20) / current_ma20) * 100
+        if current_ma20 != 0:
+            ma5_ma20_deviation = ((current_ma5 - current_ma20) / current_ma20) * 100
+        else:
+            ma5_ma20_deviation = 0
         
         # 前一天乖離率
         prev_price = float(close_prices.iloc[-2]) if len(close_prices) > 1 else current_price
-        prev_ma5_deviation = ((prev_price - prev_ma5) / prev_ma5) * 100 if prev_ma5 != 0 else 0
-        prev_ma20_deviation = ((prev_price - prev_ma20) / prev_ma20) * 100 if prev_ma20 != 0 else 0
+        prev_ma5 = float(ma_5_data.iloc[-2]) if len(ma_5_data) > 1 else current_ma5
+        prev_ma20 = float(ma_20_data.iloc[-2]) if len(ma_20_data) > 1 else current_ma20
         
-        # 乖離率趨勢箭頭
-        ma5_deviation_trend = "↑" if ma5_deviation > prev_ma5_deviation else "↓" if ma5_deviation < prev_ma5_deviation else "="
-        ma20_deviation_trend = "↑" if ma20_deviation > prev_ma20_deviation else "↓" if ma20_deviation < prev_ma20_deviation else "="
+        # 使用正確公式計算前一期乖離率
+        if prev_ma20 != 0:
+            prev_ma5_ma20_deviation = ((prev_ma5 - prev_ma20) / prev_ma20) * 100
+        else:
+            prev_ma5_ma20_deviation = 0
         
-        # 乖離率方向判斷 - 移除文字，只用顏色區分
-        # ma5_direction = "多頭" if ma5_deviation > 0 else "空頭"
-        # ma20_direction = "多頭" if ma20_deviation > 0 else "空頭"
+        # 乖離率趨勢箭頭 - 簡化邏輯
+        # 箭頭表示乖離率的變化方向，與市場趨勢一致
+        if ma5_ma20_deviation > prev_ma5_ma20_deviation:
+            # 乖離率增加（無論正負）
+            ma5_ma20_deviation_trend = "↑"
+        elif ma5_ma20_deviation < prev_ma5_ma20_deviation:
+            # 乖離率減少（無論正負）
+            ma5_ma20_deviation_trend = "↓"
+        else:
+            # 沒有變化
+            ma5_ma20_deviation_trend = "="
         
         # 過熱判斷（±10%）
-        ma5_overheated = abs(ma5_deviation) > 10
-        ma20_overheated = abs(ma20_deviation) > 10
-        
-        # 180日平均乖離率（簡化計算）
-        if len(close_prices) >= 180:
-            ma5_180_avg = close_prices.tail(180).rolling(window=5).mean()
-            ma20_180_avg = close_prices.tail(180).rolling(window=20).mean()
-            avg_ma5_deviation = ((close_prices.tail(180) - ma5_180_avg) / ma5_180_avg * 100).mean()
-            avg_ma20_deviation = ((close_prices.tail(180) - ma20_180_avg) / ma20_180_avg * 100).mean()
-        else:
-            avg_ma5_deviation = 0
-            avg_ma20_deviation = 0
+        ma5_ma20_overheated = abs(ma5_ma20_deviation) > 10
         
         # 構建技術指標
         technical_indicators.update({
@@ -843,14 +845,9 @@ def calculate_technical_indicators_enhanced(hist_data):
             "cross_message": cross_message,
             "rsi14": rsi14,
             "rsi14_trend": rsi14_trend,
-            "ma5_deviation": round(ma5_deviation, 2),
-            "ma5_deviation_trend": ma5_deviation_trend,
-            "ma5_overheated": ma5_overheated,
-            "ma20_deviation": round(ma20_deviation, 2),
-            "ma20_deviation_trend": ma20_deviation_trend,
-            "ma20_overheated": ma20_overheated,
-            "avg_ma5_deviation": round(avg_ma5_deviation, 2),
-            "avg_ma20_deviation": round(avg_ma20_deviation, 2)
+            "ma5_ma20_deviation": round(ma5_ma20_deviation, 2),
+            "ma5_ma20_deviation_trend": ma5_ma20_deviation_trend,
+            "ma5_ma20_overheated": ma5_ma20_overheated
         })
 
     except Exception as e:
