@@ -812,9 +812,9 @@ def calculate_technical_indicators_enhanced(hist_data):
         ma5_deviation_trend = "↑" if ma5_deviation > prev_ma5_deviation else "↓" if ma5_deviation < prev_ma5_deviation else "="
         ma20_deviation_trend = "↑" if ma20_deviation > prev_ma20_deviation else "↓" if ma20_deviation < prev_ma20_deviation else "="
         
-        # 乖離率方向判斷
-        ma5_direction = "多頭" if ma5_deviation > 0 else "空頭"
-        ma20_direction = "多頭" if ma20_deviation > 0 else "空頭"
+        # 乖離率方向判斷 - 移除文字，只用顏色區分
+        # ma5_direction = "多頭" if ma5_deviation > 0 else "空頭"
+        # ma20_direction = "多頭" if ma20_deviation > 0 else "空頭"
         
         # 過熱判斷（±10%）
         ma5_overheated = abs(ma5_deviation) > 10
@@ -845,11 +845,9 @@ def calculate_technical_indicators_enhanced(hist_data):
             "rsi14_trend": rsi14_trend,
             "ma5_deviation": round(ma5_deviation, 2),
             "ma5_deviation_trend": ma5_deviation_trend,
-            "ma5_direction": ma5_direction,
             "ma5_overheated": ma5_overheated,
             "ma20_deviation": round(ma20_deviation, 2),
             "ma20_deviation_trend": ma20_deviation_trend,
-            "ma20_direction": ma20_direction,
             "ma20_overheated": ma20_overheated,
             "avg_ma5_deviation": round(avg_ma5_deviation, 2),
             "avg_ma20_deviation": round(avg_ma20_deviation, 2)

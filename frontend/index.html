@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>市場分析報告系統 - 即時黃金價格</title>
+    <title>即時黃金價格應該是即時黃金期貨價格</title>
     <link rel="icon" type="image/x-icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
     <link rel="stylesheet" href="/static/style.css">
@@ -74,7 +74,7 @@
                     <span class="header-emoji">📈</span>
                 </div>
             </div>
-            <h1>市場分析報告系統</h1>
+            <h1>即時黃金價格應該是即時黃金期貨價格</h1>
             <p>智能情感分析 • 即時黃金價格 • 自動化報告</p>
         </header>
 
@@ -171,19 +171,19 @@
                         <div class="technical-indicators" id="technical-indicators" style="display: block;">
                             <h3><i class="fas fa-chart-line"></i> 技術指標</h3>
                             <div class="indicators-grid">
-                                <div class="indicator-item" title="5日移動平均線 - 短期趨勢指標">
+                                <div class="indicator-item" title="五日均線 - 短期趨勢指標，反映最近5個交易日的平均價格">
                                     <span class="indicator-label">MA5</span>
                                     <span class="indicator-value" id="ma5-value">--</span>
                                 </div>
-                                <div class="indicator-item" title="20日移動平均線 - 中期趨勢指標">
+                                <div class="indicator-item" title="二十日均線 - 中期趨勢指標，反映最近20個交易日的平均價格">
                                     <span class="indicator-label">MA20</span>
                                     <span class="indicator-value" id="ma20-value">--</span>
                                 </div>
-                                <div class="indicator-item" title="50日移動平均線 - 長期趨勢指標">
+                                <div class="indicator-item" title="五十日均線 - 長期趨勢指標，反映最近50個交易日的平均價格">
                                     <span class="indicator-label">MA50</span>
                                     <span class="indicator-value" id="ma50-value">--</span>
                                 </div>
-                                <div class="indicator-item" title="14日相對強弱指數 - 超買超賣指標">
+                                <div class="indicator-item" title="十四日相對強弱指數 - 超買超賣指標，衡量價格變動的速度和幅度">
                                     <span class="indicator-label">RSI14</span>
                                     <span class="indicator-value" id="rsi-value">--</span>
                                 </div>
@@ -195,26 +195,26 @@
                             <h3 style="margin-bottom: 1.2em;"><i class="fas fa-percentage"></i> 乖離率分析</h3>
                             <div class="deviation-grid" style="gap: 1.2em;">
                                 <div class="deviation-item" id="ma5-deviation" style="margin-bottom: 1em;"
-                                    title="當前價格相對於MA5的偏離百分比">
+                                    title="當前價格相對於MA5的相對乖離率">
                                     <div class="deviation-header" style="margin-bottom: 0.4em;">
-                                        <span class="deviation-label" style="margin-right: 0.6em;">MA5 乖離率</span>
+                                        <span class="deviation-label" style="margin-right: 0.6em;">MA5 相對乖離率</span>
                                         <span class="deviation-value" id="ma5-deviation-value">--</span>
                                     </div>
                                     <div class="deviation-description" id="ma5-deviation-description"
                                         style="color: var(--text-muted);">
-                                        當前價格相對於 MA5 的偏離程度
+                                        當前價格相對於 MA5 的相對偏離程度
                                     </div>
                                 </div>
 
                                 <div class="deviation-item" id="ma20-deviation" style="margin-bottom: 1em;"
-                                    title="當前價格相對於MA20的偏離百分比">
+                                    title="當前價格相對於MA20的相對乖離率">
                                     <div class="deviation-header" style="margin-bottom: 0.4em;">
-                                        <span class="deviation-label" style="margin-right: 0.6em;">MA20 乖離率</span>
+                                        <span class="deviation-label" style="margin-right: 0.6em;">MA20 相對乖離率</span>
                                         <span class="deviation-value" id="ma20-deviation-value">--</span>
                                     </div>
                                     <div class="deviation-description" id="ma20-deviation-description"
                                         style="color: var(--text-muted);">
-                                        當前價格相對於 MA20 的偏離程度
+                                        當前價格相對於 MA20 的相對偏離程度
                                     </div>
                                 </div>
                             </div>
@@ -239,7 +239,7 @@
                                 <div class="signal-item" id="rsi-signal" style="margin-bottom: 1em;"
                                     title="RSI14超買超賣區間檢測">
                                     <div class="signal-header" style="margin-bottom: 0.4em;">
-                                        <span class="signal-label" style="margin-right: 0.6em;">RSI 區間</span>
+                                        <span class="signal-label" style="margin-right: 0.6em;">RSI14</span>
                                         <span class="signal-status" id="rsi-status">--</span>
                                     </div>
                                     <div class="signal-description" id="rsi-description"
@@ -247,7 +247,17 @@
                                         RSI14 &gt; 70 過熱，RSI14 &lt; 30 過冷
                                     </div>
                                 </div>
-
+                                <div class="signal-item" id="pivot-point-signal" style="margin-bottom: 1em;"
+                                    title="轉折點分析">
+                                    <div class="signal-header" style="margin-bottom: 0.4em;">
+                                        <span class="signal-label" style="margin-right: 0.6em;">轉折點</span>
+                                        <span class="signal-status" id="pivot-point-status">--</span>
+                                    </div>
+                                    <div class="signal-description" id="pivot-point-description"
+                                        style="color: var(--text-muted);">
+                                        前三個月最高最低價平均值
+                                    </div>
+                                </div>
 
                             </div>
                         </div>
@@ -1312,6 +1322,9 @@
 
             // 乖離率分析
             updateDeviationAnalysis(goldData);
+
+            // 轉折點分析
+            updatePivotPointSignal(goldData);
         }
 
         function updateMACrossSignal(goldData) {
@@ -1336,17 +1349,17 @@
 
                 // 檢查交叉狀態
                 if (indicators.cross_status === 'golden_cross') {
-                    statusText = '🟢 黃金交叉';
+                    statusText = '綠燈';
                     statusClass = 'signal-success';
                     description = indicators.cross_message || 'MA5 上穿 MA20，看漲信號';
                 } else if (indicators.cross_status === 'death_cross') {
-                    statusText = '🔴 死亡交叉';
+                    statusText = '紅燈';
                     statusClass = 'signal-warning';
                     description = indicators.cross_message || 'MA5 下穿 MA20，看跌信號';
                 } else {
                     // 如果沒有交叉信號，顯示運算符號關係
                     if (!statusText) {
-                        statusText = '⚪ 正常';
+                        statusText = '白燈';
                         statusClass = 'signal-normal';
                         description = indicators.cross_message || 'MA5 與 MA20 無交叉信號';
                     }
@@ -1369,24 +1382,24 @@
                 let description = '';
 
                 if (rsi > 80) {
-                    statusText = '🔴 極度過熱';
+                    statusText = '紅燈';
                     statusClass = 'signal-warning';
                     description = `RSI14: ${rsi.toFixed(1)} > 80，極度過熱，強烈回調風險`;
                 } else if (rsi > 70) {
-                    statusText = '⚠️ 過熱';
+                    statusText = '紅燈';
                     statusClass = 'signal-warning';
                     description = `RSI14: ${rsi.toFixed(1)} > 70，市場過熱，注意回調風險`;
                 } else if (rsi < 20) {
-                    statusText = '🔴 極度過冷';
-                    statusClass = 'signal-warning';
+                    statusText = '綠燈';
+                    statusClass = 'signal-success';
                     description = `RSI14: ${rsi.toFixed(1)} < 20，極度過冷，強烈反彈機會`;
                 } else if (rsi < 30) {
-                    statusText = '⚠️ 過冷';
-                    statusClass = 'signal-warning';
+                    statusText = '綠燈';
+                    statusClass = 'signal-success';
                     description = `RSI14: ${rsi.toFixed(1)} < 30，市場過冷，注意反彈機會`;
                 } else {
-                    statusText = '✅ 正常';
-                    statusClass = 'signal-success';
+                    statusText = '白燈';
+                    statusClass = 'signal-normal';
                     description = `RSI14: ${rsi.toFixed(1)}，市場處於正常區間 (20-80)`;
                 }
 
@@ -1408,11 +1421,11 @@
                 return "color: #6b7280; font-weight: bold;";
             };
 
-            // 乖離率樣式
+            // 乖離率樣式 - 只用顏色區分多空
             const getDeviationStyle = (deviation, overheated) => {
                 if (overheated) return "color: #f59e0b; font-weight: bold;";
-                if (deviation > 0) return "color: #10b981;";
-                if (deviation < 0) return "color: #ef4444;";
+                if (deviation > 0) return "color: #10b981;"; // 綠色看多
+                if (deviation < 0) return "color: #ef4444;"; // 紅色看空
                 return "color: #6b7280;";
             };
 
@@ -1423,11 +1436,10 @@
 
                 const deviation = indicators.ma5_deviation;
                 const trend = indicators.ma5_deviation_trend || '-';
-                const direction = indicators.ma5_direction || '';
                 const overheated = indicators.ma5_overheated;
 
                 ma5DeviationElement.innerHTML = `<span style="${getDeviationStyle(deviation, overheated)}">${deviation >= 0 ? '+' : ''}${deviation}%</span> <span style="${getTrendStyle(trend)}">${trend}</span>`;
-                ma5DeviationDescElement.textContent = `${direction}結構 ${overheated ? '(過熱警告)' : ''}`;
+                ma5DeviationDescElement.textContent = `當日價格相對於MA5的乖離率(%) ${overheated ? '(過熱警告)' : ''}`;
             }
 
             // 更新 MA20 乖離率
@@ -1437,15 +1449,55 @@
 
                 const deviation = indicators.ma20_deviation;
                 const trend = indicators.ma20_deviation_trend || '-';
-                const direction = indicators.ma20_direction || '';
                 const overheated = indicators.ma20_overheated;
 
                 ma20DeviationElement.innerHTML = `<span style="${getDeviationStyle(deviation, overheated)}">${deviation >= 0 ? '+' : ''}${deviation}%</span> <span style="${getTrendStyle(trend)}">${trend}</span>`;
-                ma20DeviationDescElement.textContent = `${direction}結構 ${overheated ? '(過熱警告)' : ''}`;
+                ma20DeviationDescElement.textContent = `當日價格相對於MA20的乖離率(%) ${overheated ? '(過熱警告)' : ''}`;
             }
         }
 
+        function updatePivotPointSignal(goldData) {
+            const statusElement = document.getElementById('pivot-point-status');
+            const descriptionElement = document.getElementById('pivot-point-description');
 
+            if (goldData && goldData.pivot_points && goldData.pivot_points.length > 0) {
+                // 獲取最新的轉折點
+                const latestPivot = goldData.pivot_points[goldData.pivot_points.length - 1];
+                const currentPrice = goldData.current_price;
+                const pivotPrice = latestPivot.price;
+
+                // 計算價格關係
+                const priceDiff = currentPrice - pivotPrice;
+                const priceDiffPercent = (priceDiff / pivotPrice) * 100;
+
+                // 判斷趨勢
+                let statusText = '';
+                let statusClass = '';
+                let description = '';
+
+                if (currentPrice > pivotPrice) {
+                    statusText = '綠燈';
+                    statusClass = 'signal-success';
+                    description = `當前價格 ${currentPrice.toFixed(2)} > 轉折點 ${pivotPrice.toFixed(2)} (+${priceDiffPercent.toFixed(1)}%)`;
+                } else if (currentPrice < pivotPrice) {
+                    statusText = '紅燈';
+                    statusClass = 'signal-warning';
+                    description = `當前價格 ${currentPrice.toFixed(2)} < 轉折點 ${pivotPrice.toFixed(2)} (${priceDiffPercent.toFixed(1)}%)`;
+                } else {
+                    statusText = '白燈';
+                    statusClass = 'signal-normal';
+                    description = `當前價格 ${currentPrice.toFixed(2)} ≈ 轉折點 ${pivotPrice.toFixed(2)}`;
+                }
+
+                statusElement.textContent = statusText;
+                statusElement.className = `signal-status ${statusClass}`;
+                descriptionElement.textContent = description;
+            } else {
+                statusElement.textContent = '--';
+                statusElement.className = 'signal-status';
+                descriptionElement.textContent = '轉折點數據不可用';
+            }
+        }
 
         // ===== 更新詳細日誌 =====
         // 每個 section 都有自己的 accordion 展開/收合
@@ -1725,8 +1777,8 @@
                     
                     <div class="technical-section">
                         <h4><i class="fas fa-percentage"></i> 乖離率分析</h4>
-                        ${indicators.ma5_deviation !== undefined ? `<p><strong>MA5乖離率:</strong> <span style="${getDeviationStyle(indicators.ma5_deviation, indicators.ma5_overheated)}">${indicators.ma5_deviation >= 0 ? '+' : ''}${indicators.ma5_deviation}%</span> <span style="${getTrendStyle(indicators.ma5_deviation_trend || '-')}">${indicators.ma5_deviation_trend || '-'}</span> (${indicators.ma5_direction})</p>` : ''}
-                        ${indicators.ma20_deviation !== undefined ? `<p><strong>MA20乖離率:</strong> <span style="${getDeviationStyle(indicators.ma20_deviation, indicators.ma20_overheated)}">${indicators.ma20_deviation >= 0 ? '+' : ''}${indicators.ma20_deviation}%</span> <span style="${getTrendStyle(indicators.ma20_deviation_trend || '-')}">${indicators.ma20_deviation_trend || '-'}</span> (${indicators.ma20_direction})</p>` : ''}
+                        ${indicators.ma5_deviation !== undefined ? `<p><strong>MA5相對乖離率:</strong> <span style="${getDeviationStyle(indicators.ma5_deviation, indicators.ma5_overheated)}">${indicators.ma5_deviation >= 0 ? '+' : ''}${indicators.ma5_deviation}%</span> <span style="${getTrendStyle(indicators.ma5_deviation_trend || '-')}">${indicators.ma5_deviation_trend || '-'}</span> (${indicators.ma5_direction})</p>` : ''}
+                        ${indicators.ma20_deviation !== undefined ? `<p><strong>MA20相對乖離率:</strong> <span style="${getDeviationStyle(indicators.ma20_deviation, indicators.ma20_overheated)}">${indicators.ma20_deviation >= 0 ? '+' : ''}${indicators.ma20_deviation}%</span> <span style="${getTrendStyle(indicators.ma20_deviation_trend || '-')}">${indicators.ma20_deviation_trend || '-'}</span> (${indicators.ma20_direction})</p>` : ''}
                         ${indicators.avg_ma5_deviation !== undefined ? `<p><strong>180日平均MA5乖離率:</strong> ${indicators.avg_ma5_deviation >= 0 ? '+' : ''}${indicators.avg_ma5_deviation}%</p>` : ''}
                         ${indicators.avg_ma20_deviation !== undefined ? `<p><strong>180日平均MA20乖離率:</strong> ${indicators.avg_ma20_deviation >= 0 ? '+' : ''}${indicators.avg_ma20_deviation}%</p>` : ''}
                         ${indicators.ma5_overheated || indicators.ma20_overheated ? `<p style="color: #f59e0b; font-weight: bold;"><i class="fas fa-exclamation-triangle"></i> 注意：乖離率超過±10%，可能存在過熱風險</p>` : ''}
@@ -2528,6 +2580,7 @@
             width: 280px;
             flex-shrink: 0;
             height: fit-content;
+            z-index: 10;
         }
 
         .quick-actions-card {
@@ -2538,6 +2591,8 @@
             box-shadow: var(--shadow-lg);
             overflow: hidden;
             transition: var(--transition);
+            position: relative;
+            z-index: 15;
         }
 
         .quick-actions-card:hover {
@@ -2583,6 +2638,8 @@
             display: flex;
             flex-direction: column;
             gap: 2rem;
+            position: relative;
+            z-index: 5;
         }
 
         /* 響應式設計 */
@@ -2771,7 +2828,7 @@
             border-radius: 6px;
             font-size: 0.85rem;
             white-space: nowrap;
-            z-index: 1000;
+            z-index: 9999;
             pointer-events: none;
             margin-bottom: 0.5rem;
         }
@@ -2787,7 +2844,7 @@
             border: 5px solid transparent;
             border-top-color: rgba(0, 0, 0, 0.9);
             margin-bottom: -5px;
-            z-index: 1000;
+            z-index: 9999;
             pointer-events: none;
         }
 
@@ -2863,6 +2920,37 @@
             line-height: 1.4;
         }
 
+        /* 交易訊號監測樣式 - 移除底色 */
+        .signal-item {
+            background: transparent !important;
+            border: none !important;
+            padding: 0.5rem 0 !important;
+        }
+
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+
+        .signal-status {
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .signal-status.signal-success {
+            color: #10b981;
+        }
+
+        .signal-status.signal-warning {
+            color: #ef4444;
+        }
+
+        .signal-status.signal-normal {
+            color: #6b7280;
+        }
+
         /* 響應式設計 */
         @media (max-width: 768px) {
             .technical-section p {
@@ -2879,6 +2967,90 @@
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 0.5rem;
+            }
+
+            /* 技術指標響應式設計 */
+            .indicators-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .indicator-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.25rem;
+                padding: 0.75rem;
+            }
+
+            .indicator-label {
+                font-size: 0.9rem;
+                color: var(--text-secondary);
+            }
+
+            .indicator-value {
+                font-size: 1.1rem;
+                font-weight: bold;
+            }
+
+            /* 交易訊號監測響應式設計 */
+            .signal-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .signal-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.25rem;
+                padding: 0.75rem;
+            }
+
+            .signal-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.25rem;
+            }
+
+            .signal-label {
+                font-size: 0.9rem;
+                color: var(--text-secondary);
+            }
+
+            .signal-status {
+                font-size: 1rem;
+                font-weight: bold;
+            }
+
+            .signal-description {
+                font-size: 0.85rem;
+                line-height: 1.4;
+            }
+
+            /* 乖離率分析響應式設計 */
+            .deviation-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .deviation-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.25rem;
+            }
+
+            .deviation-label {
+                font-size: 0.9rem;
+                color: var(--text-secondary);
+            }
+
+            .deviation-value {
+                font-size: 1rem;
+                font-weight: bold;
+            }
+
+            .deviation-description {
+                font-size: 0.85rem;
+                line-height: 1.4;
             }
         }
     </style>
