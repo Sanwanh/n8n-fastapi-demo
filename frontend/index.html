@@ -194,17 +194,14 @@
                         <div class="deviation-analysis" id="deviation-analysis" style="display: block;">
                             <h3 style="margin-bottom: 1.2em;"><i class="fas fa-percentage"></i> 乖離率分析</h3>
                             <div class="deviation-grid" style="gap: 1.2em;">
-                                <div class="deviation-item" id="ma5-ma20-deviation" style="margin-bottom: 1em;"
-                                    title="MA5與MA20之間的乖離率">
+                                <div class="deviation-item" id="ma5-ma20-deviation"
+                                    style="margin-bottom: 1em; position: relative;" title="MA5與MA20之間的乖離率">
                                     <div class="deviation-header" style="margin-bottom: 0.4em;">
                                         <span class="deviation-label"
                                             style="margin-right: 0.6em; margin-left: 0.5em;">MA5-MA20 乖離率</span>
-                                        <span class="deviation-value" id="ma5-ma20-deviation-value">--</span>
                                     </div>
-                                    <div class="deviation-description" id="ma5-ma20-deviation-description"
-                                        style="color: var(--text-muted);">
-                                        MA5與MA20之間的乖離率
-                                    </div>
+                                    <div class="deviation-value" id="ma5-ma20-deviation-value"
+                                        style="position: absolute; top: 0.6em; right: 0.5em;">--</div>
                                 </div>
                             </div>
                         </div>
@@ -1410,7 +1407,6 @@
                 // 更新 MA5-MA20 乖離率
                 if (indicators.ma5_ma20_deviation !== undefined) {
                     const deviationElement = document.getElementById('ma5-ma20-deviation-value');
-                    const deviationDescElement = document.getElementById('ma5-ma20-deviation-description');
 
                     const deviation = indicators.ma5_ma20_deviation;
                     const trend = indicators.ma5_ma20_deviation_trend || '-';
@@ -1423,7 +1419,7 @@
                     if (deviation > 0) {
                         directionText = '多頭結構（偏多）';
                     } else if (deviation < 0) {
-                        directionText = '空頭結構（偏空）';
+                        directionText = '';
                     } else {
                         directionText = '中性結構';
                     }
@@ -1447,8 +1443,7 @@
                         overheatedText = ' (過熱警告：乖離率超過±10%)';
                     }
 
-                    deviationElement.innerHTML = `<span style="${getDeviationStyle(deviation, overheated)}">${deviation >= 0 ? '+' : ''}${deviation}%</span> <span style="color: ${trendColor}; font-weight: bold;">${trendArrow}</span>`;
-                    deviationDescElement.innerHTML = `${directionText}${overheatedText}`;
+                    deviationElement.innerHTML = `<span style="color: var(--text-muted);">${directionText}${overheatedText}</span> <span style="color: ${trendColor}; font-weight: bold;">${trendArrow}</span> <span style="${getDeviationStyle(deviation, overheated)}">${deviation >= 0 ? '+' : ''}${deviation}%</span>`;
                 }
             }
 
