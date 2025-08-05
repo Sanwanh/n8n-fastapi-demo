@@ -65,7 +65,7 @@ def load_config():
                 'WEBHOOK_URL',
                 'https://beloved-swine-sensibly.ngrok-free.app/webhook-test/ef5ac185-f41a-4a2d-9a78-33d329184c2'
             ),
-            'n8n_webhook_url': 'https://beloved-swine-sensibly.ngrok-free.app/webhook/Webhook - Preview',
+            'n8n_webhook_url': 'https://beloved-swine-sensibly.ngrok-free.app/webhook/Webhook_Preview',
             'timeout': int(os.getenv('WEBHOOK_TIMEOUT', 30))
         },
         'SYSTEM_INFO': {
@@ -1263,6 +1263,13 @@ async def send_mail_to_n8n(mail_data: MailSenderRequest):
                 "emoji": get_market_emoji(stored_data.get("score", 0))
             }
         }
+
+        # 新增log，記錄寄出內容
+        try:
+            import json
+            logger.info(f"📧 寄出郵件內容: {json.dumps(send_data, ensure_ascii=False)[:2000]}")  # 最多log前2000字
+        except Exception as log_e:
+            logger.warning(f"⚠️ 郵件內容log失敗: {str(log_e)}")
 
         response = requests.post(
             CONFIG['WEBHOOK_CONFIG']['n8n_webhook_url'],
