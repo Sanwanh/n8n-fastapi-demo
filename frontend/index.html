@@ -1423,11 +1423,11 @@
                     // 若 < 0：短期均線低於長期 → 空頭結構（偏空）
                     let directionText = '';
                     if (deviation > 0) {
-                        directionText = '多頭結構（偏多）';
+                        directionText = '';
                     } else if (deviation < 0) {
                         directionText = '';
                     } else {
-                        directionText = '中性結構';
+                        directionText = '';
                     }
 
                     // 箭頭用來表示今日 vs 昨日乖離率變化
@@ -1449,7 +1449,13 @@
                         overheatedText = ' (過熱警告：乖離率超過±10%)';
                     }
 
-                    deviationElement.innerHTML = `<span style="color: var(--text-muted);">${directionText}${overheatedText}</span> <span style="color: ${trendColor}; font-weight: bold;">${trendArrow}</span> <span style="${getDeviationStyle(deviation, overheated)}">${deviation >= 0 ? '+' : ''}${deviation}%</span>`;
+                    // 只有當有內容時才顯示
+                    const contentToShow = `${directionText}${overheatedText}`;
+                    if (contentToShow.trim()) {
+                        deviationElement.innerHTML = `<span style="color: var(--text-muted);">${contentToShow}</span> <span style="color: ${trendColor}; font-weight: bold;">${trendArrow}</span> <span style="${getDeviationStyle(deviation, overheated)}">${deviation >= 0 ? '+' : ''}${deviation}%</span>`;
+                    } else {
+                        deviationElement.innerHTML = `<span style="color: ${trendColor}; font-weight: bold;">${trendArrow}</span> <span style="${getDeviationStyle(deviation, overheated)}">${deviation >= 0 ? '+' : ''}${deviation}%</span>`;
+                    }
                 }
             }
 
@@ -1771,11 +1777,11 @@
                         // 根據判斷項目修改乖離率方向邏輯
                         let directionText = '';
                         if (deviation > 0) {
-                            directionText = '多頭結構（偏多）';
+                            directionText = '';
                         } else if (deviation < 0) {
-                            directionText = '空頭結構（偏空）';
+                            directionText = '';
                         } else {
-                            directionText = '中性結構';
+                            directionText = '';
                         }
 
                         // 箭頭用來表示今日 vs 昨日乖離率變化
@@ -1796,7 +1802,13 @@
                             overheatedText = ' (過熱警告：乖離率超過±10%)';
                         }
 
-                        return `<p><strong>MA5-MA20乖離率:</strong> <span style="${getDeviationStyle(deviation, overheated)}">${deviation >= 0 ? '+' : ''}${deviation}%</span> <span style="color: ${trendColor}; font-weight: bold;">${trendArrow}</span></p>`;
+                        // 只有當有內容時才顯示完整的段落
+                        const contentToShow = `${directionText}${overheatedText}`;
+                        if (contentToShow.trim()) {
+                            return `<p><strong>MA5-MA20乖離率:</strong> <span style="${getDeviationStyle(deviation, overheated)}">${deviation >= 0 ? '+' : ''}${deviation}%</span> <span style="color: ${trendColor}; font-weight: bold;">${trendArrow}</span> <span style="color: var(--text-muted);">${contentToShow}</span></p>`;
+                        } else {
+                            return `<p><strong>MA5-MA20乖離率:</strong> <span style="${getDeviationStyle(deviation, overheated)}">${deviation >= 0 ? '+' : ''}${deviation}%</span> <span style="color: ${trendColor}; font-weight: bold;">${trendArrow}</span></p>`;
+                        }
                     })() : ''}
                     </div>
                 </div>
