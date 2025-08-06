@@ -786,13 +786,13 @@ def calculate_technical_indicators_enhanced(hist_data):
         # 交叉狀態
         if golden_cross:
             cross_status = "golden_cross"
-            cross_message = "🟢 黃金交叉"
+            cross_message = "黃金交叉"
         elif death_cross:
             cross_status = "death_cross"
-            cross_message = "🔴 死亡交叉"
+            cross_message = "死亡交叉"
         else:
             cross_status = "normal"
-            cross_message = "⚪ 正常"
+            cross_message = "正常"
         
         # RSI14 計算
         rsi14 = calculate_rsi(close_prices.values, periods=14)
@@ -1086,13 +1086,13 @@ def detect_golden_death_cross(hist_data):
         message = ""
         status = "normal"
         if golden_cross:
-            message = "🟢 黃金交叉：MA5穿越MA20向上，看漲信號"
+            message = "黃金交叉：MA5穿越MA20向上，看漲信號"
             status = "golden_cross"
         elif death_cross:
-            message = "🔴 死亡交叉：MA5穿越MA20向下，看跌信號"
+            message = "死亡交叉：MA5穿越MA20向下，看跌信號"
             status = "death_cross"
         else:
-            message = "⚪ 正常：MA5與MA20無交叉信號"
+            message = "正常：MA5與MA20無交叉信號"
             status = "normal"
 
         return {

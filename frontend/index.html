@@ -220,7 +220,7 @@
                                     </div>
                                     <div class="signal-description" id="ma-cross-description"
                                         style="color: var(--text-muted);">
-                                        檢測是否出現黃金交叉/死亡交叉
+                                        檢測是否出現黃金交叉
                                     </div>
                                     <div class="signal-status" id="ma-cross-status"
                                         style="position: absolute; top: 0.5em; right: 0.5em;">
@@ -686,7 +686,7 @@
                             市場情緒摘要
                         </div>
                         <div class="market-content" id="market-content">
-                            ${summaryContent || '無摘要內��'}
+                            ${summaryContent || '無摘要內  '}
                         </div>
                         ${(summaryContent && summaryContent.length > 200)
                         ? '<button class="expand-btn" onclick="toggleMarketContent()">展開全文</button>'
@@ -1343,9 +1343,9 @@
                         // 將關係文字轉換為簡化格式
                         let relationText = indicators.ma_relation;
                         if (relationText === 'MA5 > MA20') {
-                            relationText = '5ma>20ma';
+                            relationText = 'ma5&gt;ma20';
                         } else if (relationText === 'MA5 < MA20') {
-                            relationText = '5ma<20ma';
+                            relationText = 'ma5&lt;ma20';
                         }
                         statusText = `${currentDate} ${relationText}`;
                     }
@@ -1353,16 +1353,11 @@
                     // 檢查交叉狀態
                     if (indicators.cross_status === 'golden_cross') {
                         statusText = `<span style="color: #10b981; font-weight: bold;">${currentDate} 黃金交叉</span>`;
-                        description = indicators.cross_message || 'MA5 上穿 MA20，看漲信號';
-                    } else if (indicators.cross_status === 'death_cross') {
-                        statusText = `<span style="color: #ef4444; font-weight: bold;">${currentDate} 死亡交叉</span>`;
-                        description = indicators.cross_message || 'MA5 下穿 MA20，看跌信號';
                     } else {
                         // 如果沒有交叉信號，顯示運算符號關係
-                        if (!statusText) {
-                            description = indicators.cross_message || 'MA5 與 MA20 無交叉信號';
-                        } else {
+                        if (statusText) {
                             statusText = `<span style="color: #6b7280;">${statusText}</span>`;
+                            console.log('最終statusText:', statusText);
                         }
                     }
 
